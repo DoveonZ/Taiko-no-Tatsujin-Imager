@@ -106,22 +106,24 @@
             background: #1e1e1e; color: #e0d5c5; padding: 8px 16px;
             border-radius: 8px; text-align: center; font-size: 0.9rem;
         }
+        #btnDownloadImage { display: none; }
         @media (max-width: 768px) {
-    .app-container { padding: 16px 12px; }
-    .app-header h1 { font-size: 1.5rem; }
-    .textarea-wrapper textarea { font-size: 0.9rem; min-height: 6em; padding: 10px; }
-    .btn { padding: 8px 12px; font-size: 0.8rem; }
-    .btn-primary { padding: 8px 12px; }
-    .btn-example { padding: 4px 8px; font-size: 0.7rem; }
-    .icon-btn { width: 32px; height: 32px; }
-    .icon-btn img { width: 24px; height: 24px; }
-    .controls-row { gap: 10px; }
-    .control-item input[type="number"] { width: 60px; padding: 4px 6px; }
-    .preview-outer { padding: 8px; }
-    .preview-row { padding: 8px; }
-    #btnStyleSwitch img { width: 24px; height: 24px; }
-    .file-upload.btn { padding: 8px 12px; }
-}
+            .app-container { padding: 16px 12px; }
+            .app-header h1 { font-size: 1.5rem; }
+            .textarea-wrapper textarea { font-size: 0.9rem; min-height: 6em; padding: 10px; }
+            .btn { padding: 8px 12px; font-size: 0.8rem; }
+            .btn-primary { padding: 8px 12px; }
+            .btn-example { padding: 4px 8px; font-size: 0.7rem; }
+            .icon-btn { width: 32px; height: 32px; }
+            .icon-btn img { width: 24px; height: 24px; }
+            .controls-row { gap: 10px; }
+            .control-item input[type="number"] { width: 60px; padding: 4px 6px; }
+            .preview-outer { padding: 8px; }
+            .preview-row { padding: 8px; }
+            #btnStyleSwitch img { width: 24px; height: 24px; }
+            .file-upload.btn { padding: 8px 12px; }
+            #btnDownloadImage { display: inline-flex !important; }
+        }
     </style>
 </head>
 <body>
@@ -135,24 +137,24 @@
             <div class="textarea-wrapper">
                 <textarea id="inputString" placeholder="每行一个排列，括号可跨行&#10;TJA模式下可粘贴TJA内容"></textarea>
             </div>
-            <button class="btn btn-primary" id="btnMergeView">📦 合并显示</button>
-            <button class="btn btn-primary" id="btnDownloadImage">⬇️ 下载图片</button>
+            <button class="btn btn-primary" id="btnMergeView">多行合并显示</button>
         </div>
         <div class="controls-row">
             <div class="control-item"><label for="hsInput"><strong>HS</strong></label><input type="number" id="hsInput" value="1.0" step="0.1" min="0.1"></div>
-            <div class="control-item"><label><input type="checkbox" id="smallifyToggle"> 大音符→小音符</label></div>
-            <div class="control-item"><label><input type="checkbox" id="tjaMergeLinesCheckbox" checked> 合并短行</label></div>
-            <div class="control-item"><label><input type="checkbox" id="ignoreScrollToggle"> 忽略SCROLL</label></div>
+            <div class="control-item"><label><input type="checkbox" id="smallifyToggle">大音符→小音符</label></div>
+            <div class="control-item"><label><input type="checkbox" id="tjaMergeLinesCheckbox" checked>合并短行</label></div>
+            <div class="control-item"><label><input type="checkbox" id="ignoreScrollToggle">忽略SCROLL</label></div>
             <button id="invertToggle" class="icon-btn" title="颠倒"><img src="img/Icon/Abekobe.png" alt="颠倒"></button>
             <button id="btnRandom" class="icon-btn" title="随机"><img src="img/Icon/Random.png" alt="随机"></button>
             <button id="bgMergeToggle" class="icon-btn" title="合并背景">BG</button>
             <button class="btn" id="btnStyleSwitch" title="切换样式">🎨</button>
             <button class="btn" id="btnResetView">显示原谱</button>
-            <button class="btn" id="btnModeSwitch">TJA模式</button>
+            <button class="btn" id="btnModeSwitch">切换到TJA模式</button>
             <button class="btn" id="btnTJAtoText" style="display:none;">TJA转文本</button>
             <span class="file-upload btn" id="tjaUploadBtn">
                 📂 加载TJA <input type="file" id="tjaFileInput" accept=".tja,.txt">
             </span>
+            <button class="btn btn-primary" id="btnDownloadImage">新页面查看</button>
         </div>
         <div id="courseContainer" style="display:none;" class="course-row">
             <span class="examples-label">难度选择：</span>
@@ -199,6 +201,7 @@
     const infoBar = document.getElementById('infoBar');
     const tutorialBox = document.getElementById('tutorialBox');
     const divergenceWarning = document.getElementById('divergenceWarning');
+    const btnDownloadImage = document.getElementById('btnDownloadImage');
 
     const IMG_SMALL = 106, IMG_BIG = 160, IMG_BALLOON_W = 253, IMG_BALLOON_H = 106;
     const DEFAULT_GAP = 90, FIXED_HEIGHT = 200;
@@ -856,7 +859,7 @@ SCOREDIFF:180
       { label: '闪光天舞', value: '{xooxo[oox]oxooxox[oox]oxooxoxo}12\n(x   o x   o xxxxxxo o o x xxoox o xxx ooxxo   o)' },
       { label: '里operate me', value: '{OooXxxOooXooXxxOooXxxOxx\nOooXxxOooXooXxxOooXxxOxx\nOoXxOoXxOoXxOoXoXoXxOxOx\n[oooo]}12xx(oooo) xxoooox' },
       { label: 'Hurtling Boys', value: '(ooxooxooxooxooox)ox(ooox)ox(oxooox)' },
-      { label: '里Lightning Boys', value: '(oooo)xoxox(oooo)xoxox(oooo)x(oooo)x(ooxooxooxx)\n\n(ooxooxooxx)oxoxo(xoxoxox)' },
+      { label: '里Lightning Boys', value: '(oooo)xoxox(oooo)xoxox(oooo)x(oooo)x(ooxooxooxx)\n(ooxooxooxx)oxoxo(xoxoxox)' },
       { label: 'Aragami', value: 'oooxxxoooxxxooxxooooxxxx\noooxxxoooxxxoxxxoxxxoxox\nooooxxooooxxooxxooxxooxx\noxoxoxox(oxoxoxo)ooooooxoo(oooo)' },
       { label: '里Dangan Notes', value: '[oo(o]ooo)oo[oo(o]ooo)oooooox' }
     ];
@@ -880,223 +883,157 @@ SCOREDIFF:180
 
     function normalize(str) { return str.replace(/（/g,'(').replace(/）/g,')').replace(/【/g,'[').replace(/】/g,']').replace(/｛/g,'{').replace(/｝/g,'}').replace(/，/g,' ').replace(/,/g,' '); }
     function buildCurlyMap(str) {
-  const map = new Map();
-  const stack = [];
-  // 先收集所有 {} 对，并统计内部音符数量
-  const pairs = [];
-  for (let i = 0; i < str.length; i++) {
-    if (str[i] === '{') {
-      stack.push({ left: i, count: 0 });
-    } else if (str[i] === '}' && stack.length > 0) {
-      const info = stack.pop();
-      let j = i + 1;
-      let numStr = '';
-      while (j < str.length && (str[j].match(/[0-9.]/) || str[j] === '.')) {
-        if (str[j] === '\n') { j++; continue; }
-        numStr += str[j];
-        j++;
-      }
-      let y = parseFloat(numStr);
-      if (isNaN(y) || y <= 0) y = 16;
-      info.factor = 16 / y;
-      info.right = i;
-      pairs.push(info);
-    }
-  }
-  // 统计每对括号内的非空格音符数量
-  for (const pair of pairs) {
-    let noteCount = 0;
-    for (let k = pair.left + 1; k < pair.right; k++) {
-      const ch = str[k];
-      if ('oxOXc'.includes(ch)) noteCount++;
-    }
-    map.set(pair.left, { factor: pair.factor, single: noteCount === 1 });
-  }
-  return map;
-}
-function parseGlobal(input) {
-  const norm = normalize(input);
-  const curlyMap = buildCurlyMap(norm); // 返回 Map<index, {factor, single}>
-  const rows = [];
-  let cur = [];
-  const typeStack = [];
-  const factStack = [];
-  let pendHigh = false;
-  let pendBar = false;
-  let pendingSingleFactor = null;  // 用于单音符花括号的左侧间隔因子
-
-  for (let i = 0; i < norm.length; i++) {
-    const ch = norm[i];
-    // 换行：保存当前行，重置状态
-    if (ch === '\n') {
-      if (cur.length) rows.push(cur);
-      cur = [];
-      pendHigh = false;
-      pendBar = false;
-      pendingSingleFactor = null;
-      continue;
-    }
-
-    // 高亮标记
-    if (ch === '*') {
-      pendHigh = true;
-      continue;
-    }
-
-    // 小节线标记（扩展为 | / \）
-    if (ch === '|' || ch === '/' || ch === '\\') {
-      pendBar = true;
-      continue;
-    }
-
-    // 音符、气球、空格
-    if ('oxOXc '.includes(ch)) {
-      const path = [1, ...factStack];
-      const el = {
-        type: ch === ' ' ? 'space' : ch,
-        pathFactors: path,
-        highlight: false,
-        hasBar: false,
-        leftFactor: null
-      };
-
-      // 高亮处理
-      if (ch !== ' ' && pendHigh) {
-        el.highlight = true;
-        pendHigh = false;
-      } else if (ch === ' ') {
-        pendHigh = false;
-      }
-
-      // 小节线处理（不对空格生效）
-      if (pendBar && ch !== ' ') {
-        el.hasBar = true;
-        pendBar = false;
-      } else if (ch === ' ') {
-        pendBar = false;
-      }
-
-      // 单音符花括号的左侧间隔因子（仅非空格）
-      if (ch !== ' ' && pendingSingleFactor !== null) {
-        el.leftFactor = pendingSingleFactor;
-        pendingSingleFactor = null;
-      } else if (ch === ' ') {
-        pendingSingleFactor = null;  // 空格不应获得间隔因子
-      }
-
-      cur.push(el);
-      continue;
-    }
-
-    // 开括号
-    if (ch === '(') {
-      typeStack.push('(');
-      factStack.push(2 / 3);
-    } else if (ch === '[') {
-      typeStack.push('[');
-      factStack.push(1 / 2);
-    } else if (ch === '{') {
-      const info = curlyMap.has(i) ? curlyMap.get(i) : { factor: 1, single: false };
-      if (info.single) {
-        // 单音符花括号：不压栈，仅记录一个待应用的间隔因子
-        pendingSingleFactor = info.factor;
-      } else {
-        typeStack.push('{');
-        factStack.push(info.factor);
-      }
-    }
-
-    // 闭括号
-    if (ch === ')' || ch === ']' || ch === '}') {
-      if (ch === '}') {
-        // 仅处理压过栈的 '{'（即非单音符花括号）
-        const idx = typeStack.lastIndexOf('{');
-        if (idx !== -1) {
-          typeStack.splice(idx, 1);
-          factStack.splice(idx, 1);
-        }
-        // 对于单音符花括号，没有栈操作，无需处理
-      } else {
-        const expected = ch === ')' ? '(' : '[';
-        const idx = typeStack.lastIndexOf(expected);
-        if (idx !== -1) {
-          typeStack.splice(idx, 1);
-          factStack.splice(idx, 1);
-        }
-      }
-      continue;
-    }
-
-    // 其他字符（如换行等）忽略，但重置高亮和小节线标记
-    pendHigh = false;
-    pendBar = false;
-  }
-
-  // 最后一行的处理
-  if (cur.length) rows.push(cur);
-  return rows.filter(r => r.length > 0);
-}
-    function getGapFactor(a, b) {
-      const used = new Array(b.length).fill(false);
-      let factor = 1;
-      for (let i = 0; i < a.length; i++) {
-        for (let j = 0; j < b.length; j++) {
-          if (!used[j] && Math.abs(a[i] - b[j]) < 1e-9) {
-            factor *= a[i];
-            used[j] = true;
-            break;
+      const map = new Map();
+      const stack = [];
+      const pairs = [];
+      for (let i = 0; i < str.length; i++) {
+        if (str[i] === '{') {
+          stack.push({ left: i, count: 0 });
+        } else if (str[i] === '}' && stack.length > 0) {
+          const info = stack.pop();
+          let j = i + 1;
+          let numStr = '';
+          while (j < str.length && (str[j].match(/[0-9.]/) || str[j] === '.')) {
+            if (str[j] === '\n') { j++; continue; }
+            numStr += str[j];
+            j++;
           }
+          let y = parseFloat(numStr);
+          if (isNaN(y) || y <= 0) y = 16;
+          info.factor = 16 / y;
+          info.right = i;
+          pairs.push(info);
         }
       }
-      return factor;
+      for (const pair of pairs) {
+        let noteCount = 0;
+        for (let k = pair.left + 1; k < pair.right; k++) {
+          const ch = str[k];
+          if ('oxOXc'.includes(ch)) noteCount++;
+        }
+        map.set(pair.left, { factor: pair.factor, single: noteCount === 1 });
+      }
+      return map;
+    }
+    function parseGlobal(input) {
+      const norm = normalize(input);
+      const curlyMap = buildCurlyMap(norm);
+      const rows = [];
+      let cur = [];
+      const typeStack = [];
+      const factStack = [];
+      let pendHigh = false;
+      let pendBar = false;
+      let pendingSingleFactor = null;
+
+      for (let i = 0; i < norm.length; i++) {
+        const ch = norm[i];
+        if (ch === '\n') {
+          if (cur.length) rows.push(cur);
+          cur = [];
+          pendHigh = false;
+          pendBar = false;
+          pendingSingleFactor = null;
+          continue;
+        }
+        if (ch === '*') { pendHigh = true; continue; }
+        if (ch === '|' || ch === '/' || ch === '\\') { pendBar = true; continue; }
+        if ('oxOXc '.includes(ch)) {
+          const path = [1, ...factStack];
+          const el = {
+            type: ch === ' ' ? 'space' : ch,
+            pathFactors: path,
+            highlight: false,
+            hasBar: false,
+            leftFactor: null
+          };
+          if (ch !== ' ' && pendHigh) { el.highlight = true; pendHigh = false; }
+          else if (ch === ' ') pendHigh = false;
+          if (pendBar && ch !== ' ') { el.hasBar = true; pendBar = false; }
+          else if (ch === ' ') pendBar = false;
+          if (ch !== ' ' && pendingSingleFactor !== null) {
+            el.leftFactor = pendingSingleFactor;
+            pendingSingleFactor = null;
+          } else if (ch === ' ') pendingSingleFactor = null;
+          cur.push(el);
+          continue;
+        }
+        if (ch === '(') { typeStack.push('('); factStack.push(2/3); }
+        else if (ch === '[') { typeStack.push('['); factStack.push(1/2); }
+        else if (ch === '{') {
+          const info = curlyMap.has(i) ? curlyMap.get(i) : { factor: 1, single: false };
+          if (info.single) pendingSingleFactor = info.factor;
+          else { typeStack.push('{'); factStack.push(info.factor); }
+        }
+        if (ch === ')' || ch === ']' || ch === '}') {
+          if (ch === '}') {
+            const idx = typeStack.lastIndexOf('{');
+            if (idx !== -1) { typeStack.splice(idx, 1); factStack.splice(idx, 1); }
+          } else {
+            const expected = ch === ')' ? '(' : '[';
+            const idx = typeStack.lastIndexOf(expected);
+            if (idx !== -1) { typeStack.splice(idx, 1); factStack.splice(idx, 1); }
+          }
+          continue;
+        }
+        pendHigh = false; pendBar = false;
+      }
+      if (cur.length) rows.push(cur);
+      return rows.filter(r => r.length > 0);
+    }
+    function getGapFactor(a, b) {
+      const factors = new Set([...a, ...b]);
+      let product = 1;
+      for (const f of factors) product *= f;
+      return product;
     }
     
     function layoutLine(elements, hsScale, baseGapForSpaceRow) {
-     const pos = []; let x = 0;
-  for (let i = 0; i < elements.length; i++) {
-    pos.push(x);
-    if (i < elements.length - 1) {
-      const nextEl = elements[i + 1];
-      if (nextEl.leftFactor !== null) {
-        x += DEFAULT_GAP * nextEl.leftFactor * hsScale;
-      } else {
-        x += DEFAULT_GAP * getGapFactor(elements[i].pathFactors, elements[i + 1].pathFactors) * hsScale;
+      const pos = []; let x = 0;
+      for (let i = 0; i < elements.length; i++) {
+        pos.push(x);
+        if (i < elements.length - 1) {
+          const nextEl = elements[i + 1];
+          if (nextEl.leftFactor !== null) {
+            x += DEFAULT_GAP * nextEl.leftFactor * hsScale;
+          } else {
+            x += DEFAULT_GAP * getGapFactor(elements[i].pathFactors, elements[i+1].pathFactors) * hsScale;
+          }
+        }
       }
-    }
-  }
-      let minX=Infinity,maxX=-Infinity;
+      let minX = Infinity, maxX = -Infinity;
       let firstNoteCenterX = IMG_SMALL/2;
-      elements.forEach((el,idx)=>{
-        if(el.type==='space')return;
+      elements.forEach((el, idx) => {
+        if (el.type === 'space') return;
         let size, ox;
         if (el.type === 'c') { size = IMG_BALLOON_W; ox = -0.5; }
-        else { const isBig=el.type==='O'||el.type==='X'; size=isBig?IMG_BIG:IMG_SMALL; ox=isBig?-(IMG_BIG-IMG_SMALL)/2:0; }
-        const left=pos[idx]+ox;
-        if(left<minX)minX=left;
-        if(left+size>maxX)maxX=left+size;
-        if(idx===0 || !firstNoteCenterX) firstNoteCenterX = pos[idx] + IMG_SMALL/2;
+        else { const isBig = el.type === 'O' || el.type === 'X'; size = isBig ? IMG_BIG : IMG_SMALL; ox = isBig ? -(IMG_BIG-IMG_SMALL)/2 : 0; }
+        const left = pos[idx] + ox;
+        if (left < minX) minX = left;
+        if (left + size > maxX) maxX = left + size;
+        if (idx === 0 || !firstNoteCenterX) firstNoteCenterX = pos[idx] + IMG_SMALL/2;
       });
-      if(minX===Infinity){
-        if (baseGapForSpaceRow && elements.length===1 && elements[0].type==='space') {
+      if (minX === Infinity) {
+        if (baseGapForSpaceRow && elements.length === 1 && elements[0].type === 'space') {
           const w = baseGapForSpaceRow * hsScale;
-          return { elements, positions:[0], minX:0, maxX:w, width:w, height:FIXED_HEIGHT, firstNoteCanvasX:IMG_SMALL/2, firstNoteCanvasY:100 };
+          return { elements, positions: [0], minX: 0, maxX: w, width: w, height: FIXED_HEIGHT, firstNoteCanvasX: IMG_SMALL/2, firstNoteCanvasY: 100 };
         }
-        minX=0;maxX=IMG_SMALL;
+        minX = 0; maxX = IMG_SMALL;
       }
-      const width = maxX-minX;
+      const width = maxX - minX;
       const firstNoteCanvasX = firstNoteCenterX - minX;
-      return { elements, positions:pos, minX, maxX, width, height:FIXED_HEIGHT, firstNoteCanvasX, firstNoteCanvasY:100 };
+      return { elements, positions: pos, minX, maxX, width, height: FIXED_HEIGHT, firstNoteCanvasX, firstNoteCanvasY: 100 };
     }
 
-    function invertType(t,inv){ if(!inv||t==='c')return t; if(t==='o')return'x';if(t==='x')return'o';if(t==='O')return'X';if(t==='X')return'O';return t; }
-    function smallifyType(t){ return t==='O'?'o':t==='X'?'x':t; }
+    function invertType(t, inv) { if (!inv || t === 'c') return t; if (t === 'o') return 'x'; if (t === 'x') return 'o'; if (t === 'O') return 'X'; if (t === 'X') return 'O'; return t; }
+    function smallifyType(t) { return t === 'O' ? 'o' : t === 'X' ? 'x' : t; }
 
     function drawLine(canvas, layout, doInvert, doSmallify, randomMapRow) {
-      const ctx=canvas.getContext('2d');
+      const ctx = canvas.getContext('2d');
       canvas.width = Math.ceil(layout.width);
       canvas.height = FIXED_HEIGHT;
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      for (let i=0; i<layout.elements.length; i++) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let i = 0; i < layout.elements.length; i++) {
         const el = layout.elements[i];
         if (!el.hasBar) continue;
         const centerX = layout.positions[i] + IMG_SMALL/2 - layout.minX;
@@ -1108,36 +1045,36 @@ function parseGlobal(input) {
       }
       ctx.save();
       ctx.translate(-layout.minX, 0);
-      for (let i=layout.elements.length-1; i>=0; i--) {
+      for (let i = layout.elements.length - 1; i >= 0; i--) {
         const el = layout.elements[i];
         if (el.type === 'space') continue;
         let drawType = el.type;
-        if (randomMapRow && randomMapRow[i]) { if (drawType!=='c') drawType = (drawType==='o')?'x':(drawType==='x')?'o':(drawType==='O')?'X':(drawType==='X')?'O':drawType; }
+        if (randomMapRow && randomMapRow[i]) { if (drawType !== 'c') drawType = (drawType === 'o') ? 'x' : (drawType === 'x') ? 'o' : (drawType === 'O') ? 'X' : (drawType === 'X') ? 'O' : drawType; }
         drawType = invertType(drawType, doInvert);
-        if (doSmallify && drawType!=='c') drawType = smallifyType(drawType);
+        if (doSmallify && drawType !== 'c') drawType = smallifyType(drawType);
         let size, drawX, drawY, img;
         if (drawType === 'c') {
           size = IMG_BALLOON_W; drawX = layout.positions[i] - 0.5; drawY = 100 - IMG_BALLOON_H/2; img = imgC;
         } else {
-          const isBig = drawType==='O'||drawType==='X';
+          const isBig = drawType === 'O' || drawType === 'X';
           size = isBig ? IMG_BIG : IMG_SMALL;
           drawY = 100 - size/2;
           drawX = isBig ? layout.positions[i] - (IMG_BIG - IMG_SMALL)/2 : layout.positions[i];
-          img = {o:imgOSmall, x:imgXSmall, O:imgOBig, X:imgXBig}[drawType];
+          img = { o: imgOSmall, x: imgXSmall, O: imgOBig, X: imgXBig }[drawType];
         }
-        if (el.highlight) { ctx.shadowColor='white'; ctx.shadowBlur=20; }
-        if (img && loaded[drawType] && img.complete && img.naturalWidth>0) {
-          if (drawType==='c') ctx.drawImage(img, drawX, drawY, size, IMG_BALLOON_H);
+        if (el.highlight) { ctx.shadowColor = 'white'; ctx.shadowBlur = 20; }
+        if (img && loaded[drawType] && img.complete && img.naturalWidth > 0) {
+          if (drawType === 'c') ctx.drawImage(img, drawX, drawY, size, IMG_BALLOON_H);
           else ctx.drawImage(img, drawX, drawY, size, size);
         } else {
           ctx.save();
-          const cx = drawX + size/2, cy = drawY + (drawType==='c'?IMG_BALLOON_H:size)/2;
+          const cx = drawX + size/2, cy = drawY + (drawType === 'c' ? IMG_BALLOON_H : size)/2;
           ctx.beginPath(); ctx.arc(cx, cy, size*0.42, 0, Math.PI*2);
-          ctx.fillStyle = (drawType==='o'||drawType==='O') ? '#F84828' : (drawType==='x'||drawType==='X') ? '#68c0c0' : '#FFD700';
+          ctx.fillStyle = (drawType === 'o' || drawType === 'O') ? '#F84828' : (drawType === 'x' || drawType === 'X') ? '#68c0c0' : '#FFD700';
           ctx.fill();
           ctx.restore();
         }
-        if (el.highlight) { ctx.shadowColor='transparent'; ctx.shadowBlur=0; }
+        if (el.highlight) { ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; }
       }
       ctx.restore();
     }
@@ -1149,15 +1086,15 @@ function parseGlobal(input) {
       let inStart = false;
       let b = 1, a = 1;
       let buffer = '';
-      const mapDigit = {'0':' ','1':'o','2':'x','3':'O','4':'X','5':' ','6':' ','7':'c','8':' ','9':' '};
+      const mapDigit = { '0': ' ', '1': 'o', '2': 'x', '3': 'O', '4': 'X', '5': ' ', '6': ' ', '7': 'c', '8': ' ', '9': ' ' };
       const flushBuffer = () => {
         if (buffer.length === 0) return;
         const digits = buffer.replace(/\s/g, '');
-        if (digits.length === 0) { buffer=''; return; }
+        if (digits.length === 0) { buffer = ''; return; }
         const n = digits.length;
         const baseGap = DEFAULT_GAP * 16 * a * b / n;
         const elements = [];
-        for (let dIdx=0; dIdx<digits.length; dIdx++) {
+        for (let dIdx = 0; dIdx < digits.length; dIdx++) {
           const ch = digits[dIdx];
           const mapped = mapDigit[ch] || ' ';
           elements.push({ type: mapped === ' ' ? 'space' : mapped, pathFactors: [1], hasBar: false });
@@ -1174,23 +1111,23 @@ function parseGlobal(input) {
         if (line.startsWith('COURSE:')) {
           flushBuffer();
           if (currentCourse && currentCourse.rows.length) courses.push(currentCourse);
-          const name = line.replace('COURSE:','').trim();
+          const name = line.replace('COURSE:', '').trim();
           currentCourse = { name, rows: [] };
-          inStart = false; b=1; a=1; buffer = '';
+          inStart = false; b = 1; a = 1; buffer = '';
         } else if (line === '#START') {
-          flushBuffer(); inStart = true; b=1; a=1; buffer = '';
+          flushBuffer(); inStart = true; b = 1; a = 1; buffer = '';
         } else if (line === '#END') {
           flushBuffer(); inStart = false;
         } else if (inStart && currentCourse) {
           if (line.startsWith('#MEASURE')) {
             flushBuffer();
-            const expr = line.replace('#MEASURE','').trim();
+            const expr = line.replace('#MEASURE', '').trim();
             const parts = expr.split('/');
             if (parts.length === 2) a = parseFloat(parts[0]) / parseFloat(parts[1]);
             else a = parseFloat(expr) || 1;
           } else if (line.startsWith('#SCROLL')) {
             if (!ignoreScrollActive) {
-              const val = parseFloat(line.replace('#SCROLL','').trim());
+              const val = parseFloat(line.replace('#SCROLL', '').trim());
               if (!isNaN(val)) b = val;
             }
           } else if (line.startsWith('#BPMCHANGE')) {
@@ -1211,7 +1148,7 @@ function parseGlobal(input) {
                   const n = seg.length;
                   const baseGap = DEFAULT_GAP * 16 * a * b / n;
                   const elements = [];
-                  for (let dIdx=0; dIdx<seg.length; dIdx++) {
+                  for (let dIdx = 0; dIdx < seg.length; dIdx++) {
                     const ch = seg[dIdx];
                     const mapped = mapDigit[ch] || ' ';
                     elements.push({ type: mapped === ' ' ? 'space' : mapped, pathFactors: [1], hasBar: false });
@@ -1234,19 +1171,19 @@ function parseGlobal(input) {
     }
 
     function convertTJAtoText(courseRows) {
-        return courseRows.map(row => {
-            const notes = row.elements.map(el => el.type === 'space' ? ' ' : el.type).join('');
-            const y = 1440 / row.baseGap;
-            if (Math.abs(y - 16) < 0.001) return notes;
-            const yStr = Number.isInteger(y) ? y.toString() : y.toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
-            return `{${notes}}${yStr}`;
-        }).join('\n');
+      return courseRows.map(row => {
+        const notes = row.elements.map(el => el.type === 'space' ? ' ' : el.type).join('');
+        const y = 1440 / row.baseGap;
+        if (Math.abs(y - 16) < 0.001) return notes;
+        const yStr = Number.isInteger(y) ? y.toString() : y.toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
+        return `{${notes}}${yStr}`;
+      }).join('\n');
     }
 
     function mergeTJARows(rows, hsScale) {
       const layouts = [];
       let group = { elements: [], positions: [], gapSum: 0, gapToNext: 0, rowCount: 0 };
-      for (let r=0; r<rows.length; r++) {
+      for (let r = 0; r < rows.length; r++) {
         const row = rows[r];
         const scaledBase = row.baseGap * hsScale;
         const isSpaceRow = row.elements.length === 1 && row.elements[0].type === 'space';
@@ -1254,7 +1191,7 @@ function parseGlobal(input) {
         const gapBetween = group.rowCount > 0 ? group.gapToNext : 0;
         if (group.rowCount === 0 || (group.gapSum + gapBetween + currentGapSum) <= MAX_GAP_SUM) {
           if (group.rowCount > 0) group.positions.push(group.positions[group.positions.length-1] + group.gapToNext);
-          for (let i=0; i<row.elements.length; i++) {
+          for (let i = 0; i < row.elements.length; i++) {
             const el = row.elements[i];
             const newEl = { ...el, hasBar: el.hasBar };
             if (isSpaceRow) newEl.spaceWidth = scaledBase;
@@ -1268,7 +1205,7 @@ function parseGlobal(input) {
         } else {
           if (group.rowCount > 0) layouts.push(buildLayoutFromGroup(group));
           group = { elements: [], positions: [], gapSum: 0, gapToNext: 0, rowCount: 0 };
-          for (let i=0; i<row.elements.length; i++) {
+          for (let i = 0; i < row.elements.length; i++) {
             const el = row.elements[i];
             const newEl = { ...el, hasBar: el.hasBar && i === 0 };
             if (isSpaceRow) newEl.spaceWidth = scaledBase;
@@ -1300,14 +1237,14 @@ function parseGlobal(input) {
         }
         let size, ox;
         if (el.type === 'c') { size = IMG_BALLOON_W; ox = -0.5; }
-        else { const isBig = el.type==='O'||el.type==='X'; size=isBig?IMG_BIG:IMG_SMALL; ox=isBig?-(IMG_BIG-IMG_SMALL)/2:0; }
+        else { const isBig = el.type === 'O' || el.type === 'X'; size = isBig ? IMG_BIG : IMG_SMALL; ox = isBig ? -(IMG_BIG-IMG_SMALL)/2 : 0; }
         const left = pos + ox;
         if (left < minX) minX = left;
         if (left + size > maxX) maxX = left + size;
         if (idx === 0) firstNoteCenterX = pos + IMG_SMALL / 2;
       });
       if (minX === Infinity) { minX = 0; maxX = IMG_SMALL; }
-      return { elements, positions, minX, maxX, width: maxX-minX, height: FIXED_HEIGHT, firstNoteCanvasX: firstNoteCenterX-minX, firstNoteCanvasY:100 };
+      return { elements, positions, minX, maxX, width: maxX - minX, height: FIXED_HEIGHT, firstNoteCanvasX: firstNoteCenterX - minX, firstNoteCanvasY: 100 };
     }
 
     function updateCourseButtons() {
@@ -1325,7 +1262,7 @@ function parseGlobal(input) {
 
     function render() {
       let rowLayouts;
-      const hsVal = parseFloat(hsInput.value); const hsScale = isNaN(hsVal)||hsVal<=0?1:hsVal;
+      const hsVal = parseFloat(hsInput.value); const hsScale = isNaN(hsVal) || hsVal <= 0 ? 1 : hsVal;
       const doInvert = invertActive, doSmallify = smallifyToggle.checked;
       tjaMergeLinesCheckbox.disabled = !tjaModeActive;
       ignoreScrollToggle.disabled = !tjaModeActive;
@@ -1345,35 +1282,35 @@ function parseGlobal(input) {
       } else {
         const raw = textarea.value;
         const rows = parseGlobal(raw);
-        rowLayouts = rows.map(e=>layoutLine(e,hsScale)).filter(l=>l.elements.some(e=>e.type!=='space'));
+        rowLayouts = rows.map(e => layoutLine(e, hsScale)).filter(l => l.elements.some(e => e.type !== 'space'));
       }
       currentRowLayouts = rowLayouts;
 
       const modeInfo = tjaModeActive ? (tjaMergeLinesActive ? '合并短行' : '原始分行') : '文本模式';
-      infoBar.innerHTML = `行数:${rowLayouts.length} | 音符:${rowLayouts.reduce((s,l)=>s+l.elements.filter(e=>e.type!=='space').length,0)} | HS:${hsScale.toFixed(2)} | 样式:${currentStyle} | ${modeInfo}`;
+      infoBar.innerHTML = `行数:${rowLayouts.length} | 音符:${rowLayouts.reduce((s, l) => s + l.elements.filter(e => e.type !== 'space').length, 0)} | HS:${hsScale.toFixed(2)} | 样式:${currentStyle} | ${modeInfo}`;
       previewContainer.innerHTML = '';
-      if (!rowLayouts.length) { placeholder.style.display='block'; return; }
-      placeholder.style.display='none';
+      if (!rowLayouts.length) { placeholder.style.display = 'block'; return; }
+      placeholder.style.display = 'none';
 
       if (mergeViewActive || backgroundMergeActive) {
-        const rowCanvases = rowLayouts.map((l,i)=>{ const c=document.createElement('canvas'); drawLine(c,l,doInvert,doSmallify,randomMap?.[i]); return {canvas:c, firstX:l.firstNoteCanvasX, firstY:100}; });
-        const maxFirstX = Math.max(...rowCanvases.map(r=>r.firstX));
-        const finalHeight = 100 + (rowLayouts.length-1)*200 + 100;
-        const maxWidth = Math.max(...rowCanvases.map((r,i)=> (maxFirstX - r.firstX) + r.canvas.width ));
+        const rowCanvases = rowLayouts.map((l, i) => { const c = document.createElement('canvas'); drawLine(c, l, doInvert, doSmallify, randomMap?.[i]); return { canvas: c, firstX: l.firstNoteCanvasX, firstY: 100 }; });
+        const maxFirstX = Math.max(...rowCanvases.map(r => r.firstX));
+        const finalHeight = 100 + (rowLayouts.length - 1) * 200 + 100;
+        const maxWidth = Math.max(...rowCanvases.map((r, i) => (maxFirstX - r.firstX) + r.canvas.width));
         const merged = document.createElement('canvas');
         merged.width = Math.ceil(maxWidth); merged.height = Math.ceil(finalHeight);
         const ctx = merged.getContext('2d');
-        if(backgroundMergeActive){ ctx.fillStyle='#272727'; ctx.fillRect(0,0,merged.width,merged.height); }
+        if (backgroundMergeActive) { ctx.fillStyle = '#272727'; ctx.fillRect(0, 0, merged.width, merged.height); }
         let y = 100;
-        rowLayouts.forEach((l,i) => { const c = rowCanvases[i].canvas; ctx.drawImage(c, maxFirstX - rowCanvases[i].firstX, y - 100); if (i < rowLayouts.length-1) y += 200; });
+        rowLayouts.forEach((l, i) => { const c = rowCanvases[i].canvas; ctx.drawImage(c, maxFirstX - rowCanvases[i].firstX, y - 100); if (i < rowLayouts.length - 1) y += 200; });
         const div = document.createElement('div'); div.className = 'preview-row';
-        div.innerHTML = `<div class="preview-row-header"><span>${backgroundMergeActive?'🎨 合并背景':'📦 合并显示'} (${rowLayouts.length}行)</span></div>`;
+        div.innerHTML = `<div class="preview-row-header"><span>${backgroundMergeActive ? '🎨 合并背景' : '📦 合并显示'} (${rowLayouts.length}行)</span></div>`;
         const wrap = document.createElement('div'); wrap.className = 'preview-canvas-wrapper'; wrap.appendChild(merged); div.appendChild(wrap); previewContainer.appendChild(div);
-        const scale = Math.min(1, (previewContainer.clientWidth-32) / maxWidth);
-        merged.style.width = merged.width*scale + 'px'; merged.style.height = merged.height*scale + 'px';
+        const scale = Math.min(1, (previewContainer.clientWidth - 32) / maxWidth);
+        merged.style.width = merged.width * scale + 'px'; merged.style.height = merged.height * scale + 'px';
       } else {
         const maxFirstX = Math.max(...rowLayouts.map(l => l.firstNoteCanvasX));
-        rowLayouts.forEach((l,i)=>{
+        rowLayouts.forEach((l, i) => {
           const origCanvas = document.createElement('canvas');
           drawLine(origCanvas, l, doInvert, doSmallify, randomMap?.[i]);
           const extraLeft = maxFirstX - l.firstNoteCanvasX;
@@ -1383,80 +1320,69 @@ function parseGlobal(input) {
           const fctx = finalCanvas.getContext('2d');
           fctx.drawImage(origCanvas, extraLeft, 0);
           const div = document.createElement('div'); div.className = 'preview-row';
-          div.innerHTML = `<div class="preview-row-header"><span>🎵 第${i+1}行 (${l.elements.filter(e=>e.type!=='space').length}音符)</span></div>`;
+          div.innerHTML = `<div class="preview-row-header"><span>🎵 第${i + 1}行 (${l.elements.filter(e => e.type !== 'space').length}音符)</span></div>`;
           const wrap = document.createElement('div'); wrap.className = 'preview-canvas-wrapper';
           wrap.appendChild(finalCanvas); div.appendChild(wrap); previewContainer.appendChild(div);
         });
         const allC = previewContainer.querySelectorAll('canvas');
-        const maxW = Math.max(...Array.from(allC).map(c=>c.width));
-        const scale = Math.min(1, (previewContainer.clientWidth-32)/maxW);
-        allC.forEach(c=>{ c.style.width=c.width*scale+'px'; c.style.height=c.height*scale+'px'; });
+        const maxW = Math.max(...Array.from(allC).map(c => c.width));
+        const scale = Math.min(1, (previewContainer.clientWidth - 32) / maxW);
+        allC.forEach(c => { c.style.width = c.width * scale + 'px'; c.style.height = c.height * scale + 'px'; });
       }
     }
 
-    function applyRandom() { if(!currentRowLayouts.length)return; randomMap=currentRowLayouts.map(l=>l.elements.map((e,i)=>e.type!=='space'&&Math.random()<0.5)); render(); }
-    function resetView() { invertActive=false; invertToggle.classList.remove('active'); smallifyToggle.checked=false; randomMap=null; mergeViewActive=false; backgroundMergeActive=false; bgMergeToggle.classList.remove('bg-active'); btnMergeView.textContent='📦 合并显示'; render(); }
-    function toggleMergeView() { mergeViewActive=!mergeViewActive; if(mergeViewActive&&backgroundMergeActive){ backgroundMergeActive=false; bgMergeToggle.classList.remove('bg-active'); } btnMergeView.textContent=mergeViewActive?'📋 分行显示':'📦 合并显示'; render(); }
-    function toggleBackgroundMerge() { backgroundMergeActive=!backgroundMergeActive; if(backgroundMergeActive&&mergeViewActive){ mergeViewActive=false; btnMergeView.textContent='📦 合并显示'; } bgMergeToggle.classList.toggle('bg-active',backgroundMergeActive); render(); }
+    function applyRandom() { if (!currentRowLayouts.length) return; randomMap = currentRowLayouts.map(l => l.elements.map((e, i) => e.type !== 'space' && Math.random() < 0.5)); render(); }
+    function resetView() { invertActive = false; invertToggle.classList.remove('active'); smallifyToggle.checked = false; randomMap = null; mergeViewActive = false; backgroundMergeActive = false; bgMergeToggle.classList.remove('bg-active'); btnMergeView.textContent = '📦 合并显示'; render(); }
+    function toggleMergeView() { mergeViewActive = !mergeViewActive; if (mergeViewActive && backgroundMergeActive) { backgroundMergeActive = false; bgMergeToggle.classList.remove('bg-active'); } btnMergeView.textContent = mergeViewActive ? '📋 分行显示' : '📦 合并显示'; render(); }
+    function toggleBackgroundMerge() { backgroundMergeActive = !backgroundMergeActive; if (backgroundMergeActive && mergeViewActive) { mergeViewActive = false; btnMergeView.textContent = '📦 合并显示'; } bgMergeToggle.classList.toggle('bg-active', backgroundMergeActive); render(); }
 
     function updateStyleButtonIcon() {
       const nextIndex = (currentStyleIndex + 1) % styleSequence.length;
       const nextStyle = styleSequence[nextIndex];
       const imgSrc = `img/${nextStyle}/o.png`;
       const img = document.createElement('img');
-      img.src = imgSrc;
-      img.alt = '样式';
-      img.style.width = '28px'; img.style.height = '28px';
+      img.src = imgSrc; img.alt = '样式'; img.style.width = '28px'; img.style.height = '28px';
       img.onerror = () => { btnStyleSwitch.textContent = '🎨'; };
       btnStyleSwitch.innerHTML = '';
       btnStyleSwitch.appendChild(img);
     }
 
     function switchStyle() {
-      currentStyleIndex=(currentStyleIndex+1)%styleSequence.length;
-      currentStyle=styleSequence[currentStyleIndex];
-      loaded.o=loaded.x=loaded.O=loaded.X=loaded.c=false;
+      currentStyleIndex = (currentStyleIndex + 1) % styleSequence.length;
+      currentStyle = styleSequence[currentStyleIndex];
+      loaded.o = loaded.x = loaded.O = loaded.X = loaded.c = false;
       updateImageSources(); bindImageEvents(); updateStyleButtonIcon(); render();
     }
 
     function toggleTjaMode() {
-  tjaModeActive = !tjaModeActive;
-  btnModeSwitch.textContent = tjaModeActive ? '📝 切换到文本模式' : '📝 切换到TJA模式';
-  if (tjaModeActive) {
-    examplesRow.style.display = 'none';
-    tjaUploadBtn.style.display = 'inline-flex';
-    ignoreScrollToggle.disabled = false;
-    tjaMergeLinesCheckbox.disabled = false;
-    ignoreScrollActive = false;
-    ignoreScrollToggle.checked = false;
-    textarea.value = EMBEDDED_TJA; // 加载内嵌曲谱
-    tjaCourses = parseTJA(textarea.value);
-    updateCourseButtons();
-    selectedCourse = tjaCourses.length ? tjaCourses[0] : null;
-  } else {
-    textarea.value = ''; // ★ 清空输入框，避免 TJA 内容被错误解析为超长图片
-    examplesRow.style.display = 'flex';
-    tjaUploadBtn.style.display = 'none';
-    ignoreScrollToggle.disabled = true;
-    tjaMergeLinesCheckbox.disabled = true;
-    courseContainer.style.display = 'none';
-    selectedCourse = null;
-  }
-  render();
-}
+      tjaModeActive = !tjaModeActive;
+      btnModeSwitch.textContent = tjaModeActive ? '切换到文本模式' : '切换到TJA模式';
+      if (tjaModeActive) {
+        examplesRow.style.display = 'none'; tjaUploadBtn.style.display = 'inline-flex';
+        ignoreScrollToggle.disabled = false; tjaMergeLinesCheckbox.disabled = false;
+        ignoreScrollActive = false; ignoreScrollToggle.checked = false;
+        textarea.value = EMBEDDED_TJA;
+        tjaCourses = parseTJA(textarea.value);
+        updateCourseButtons();
+        selectedCourse = tjaCourses.length ? tjaCourses[0] : null;
+      } else {
+        textarea.value = '';
+        examplesRow.style.display = 'flex'; tjaUploadBtn.style.display = 'none';
+        ignoreScrollToggle.disabled = true; tjaMergeLinesCheckbox.disabled = true;
+        courseContainer.style.display = 'none'; selectedCourse = null;
+      }
+      render();
+    }
 
     btnTJAtoText.addEventListener('click', () => {
       if (!selectedCourse) return;
       const converted = convertTJAtoText(selectedCourse.rows);
       textarea.value = converted;
       tjaModeActive = false;
-      btnModeSwitch.textContent = '📝 切换到TJA模式';
-      examplesRow.style.display = 'flex';
-      tjaUploadBtn.style.display = 'none';
-      ignoreScrollToggle.disabled = true;
-      tjaMergeLinesCheckbox.disabled = true;
-      courseContainer.style.display = 'none';
-      selectedCourse = null;
+      btnModeSwitch.textContent = '切换到TJA模式';
+      examplesRow.style.display = 'flex'; tjaUploadBtn.style.display = 'none';
+      ignoreScrollToggle.disabled = true; tjaMergeLinesCheckbox.disabled = true;
+      courseContainer.style.display = 'none'; selectedCourse = null;
       render();
     });
 
@@ -1498,57 +1424,46 @@ function parseGlobal(input) {
       }
     });
     btnMergeView.addEventListener('click', toggleMergeView);
-    document.getElementById('btnDownloadImage').addEventListener('click', () => {
-    if (!currentRowLayouts.length) return;
-
-    const hsVal = parseFloat(hsInput.value);
-    const hsScale = isNaN(hsVal) || hsVal <= 0 ? 1 : hsVal;
-    const doInvert = invertActive;
-    const doSmallify = smallifyToggle.checked;
-
-    const rowCanvases = currentRowLayouts.map((l, i) => {
-        const c = document.createElement('canvas');
-        drawLine(c, l, doInvert, doSmallify, randomMap ? randomMap[i] : null);
-        return { canvas: c, firstX: l.firstNoteCanvasX, firstY: 100 };
-    });
-
-    const maxFirstX = Math.max(...rowCanvases.map(r => r.firstX));
-    const finalHeight = 100 + (currentRowLayouts.length - 1) * 200 + 100;
-    const maxWidth = Math.max(...rowCanvases.map(r => (maxFirstX - r.firstX) + r.canvas.width));
-
-    const mergedCanvas = document.createElement('canvas');
-    mergedCanvas.width = Math.ceil(maxWidth);
-    mergedCanvas.height = Math.ceil(finalHeight);
-    const ctx = mergedCanvas.getContext('2d');
-
-    if (backgroundMergeActive) {
-        ctx.fillStyle = '#272727';
-        ctx.fillRect(0, 0, mergedCanvas.width, mergedCanvas.height);
-    }
-
-    let y = 100;
-    currentRowLayouts.forEach((l, i) => {
-        const { canvas, firstX } = rowCanvases[i];
-        ctx.drawImage(canvas, maxFirstX - firstX, y - 100);
-        if (i < currentRowLayouts.length - 1) y += 200;
-    });
-
-    // 在新页面展示图片
-    const dataURL = mergedCanvas.toDataURL('image/png');
-    const newWindow = window.open('');
-    if (newWindow) {
-        newWindow.document.write(`<img src="${dataURL}" style="max-width:100%; height:auto; background:#272727;" />`);
-        newWindow.document.title = '预览图片 - 太鼓鱼蛋生成器';
-    } else {
-        alert('请允许弹出窗口以查看图片');
-    }
-});
     bgMergeToggle.addEventListener('click', toggleBackgroundMerge);
     btnResetView.addEventListener('click', resetView);
     btnStyleSwitch.addEventListener('click', switchStyle);
-    invertToggle.addEventListener('click', ()=>{ invertActive=!invertActive; invertToggle.classList.toggle('active',invertActive); render(); });
+    invertToggle.addEventListener('click', () => { invertActive = !invertActive; invertToggle.classList.toggle('active', invertActive); render(); });
     btnRandom.addEventListener('click', applyRandom);
     btnModeSwitch.addEventListener('click', toggleTjaMode);
+
+    btnDownloadImage.addEventListener('click', () => {
+      if (!currentRowLayouts.length) return;
+      const hsVal = parseFloat(hsInput.value);
+      const hsScale = isNaN(hsVal) || hsVal <= 0 ? 1 : hsVal;
+      const doInvert = invertActive, doSmallify = smallifyToggle.checked;
+      const rowCanvases = currentRowLayouts.map((l, i) => {
+        const c = document.createElement('canvas');
+        drawLine(c, l, doInvert, doSmallify, randomMap ? randomMap[i] : null);
+        return { canvas: c, firstX: l.firstNoteCanvasX, firstY: 100 };
+      });
+      const maxFirstX = Math.max(...rowCanvases.map(r => r.firstX));
+      const finalHeight = 100 + (currentRowLayouts.length - 1) * 200 + 100;
+      const maxWidth = Math.max(...rowCanvases.map(r => (maxFirstX - r.firstX) + r.canvas.width));
+      const mergedCanvas = document.createElement('canvas');
+      mergedCanvas.width = Math.ceil(maxWidth);
+      mergedCanvas.height = Math.ceil(finalHeight);
+      const ctx = mergedCanvas.getContext('2d');
+      if (backgroundMergeActive) { ctx.fillStyle = '#272727'; ctx.fillRect(0, 0, mergedCanvas.width, mergedCanvas.height); }
+      let y = 100;
+      currentRowLayouts.forEach((l, i) => {
+        const { canvas, firstX } = rowCanvases[i];
+        ctx.drawImage(canvas, maxFirstX - firstX, y - 100);
+        if (i < currentRowLayouts.length - 1) y += 200;
+      });
+      const dataURL = mergedCanvas.toDataURL('image/png');
+      const newWindow = window.open('');
+      if (newWindow) {
+        newWindow.document.write(`<img src="${dataURL}" style="max-width:100%; height:auto; background:#272727;" />`);
+        newWindow.document.title = '预览图片 - 太鼓图像生成器';
+      } else {
+        alert('请允许弹出窗口以查看图片');
+      }
+    });
 
     tjaUploadBtn.style.display = 'none';
     ignoreScrollToggle.disabled = true;
@@ -1556,7 +1471,7 @@ function parseGlobal(input) {
     tjaMergeLinesCheckbox.disabled = true;
     updateStyleButtonIcon();
     renderExamples();
-    setTimeout(()=>{ render(); }, 400);
+    setTimeout(() => { render(); }, 400);
   })();
 </script>
 </body>
