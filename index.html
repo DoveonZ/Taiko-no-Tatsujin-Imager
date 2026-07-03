@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>太鼓之达人图像生成器</title>
+    <style>
+        :root {
+            --bg: #f5f0eb;
+            --card-bg: #ffffff;
+            --text: #2c2416;
+            --text-secondary: #6b5e4a;
+            --border: #e0d5c5;
+            --accent: #c17f59;
+            --accent-hover: #a06b48;
+            --input-bg: #fdfaf6;
+            --shadow: 0 2px 12px rgba(0,0,0,0.06);
+            --shadow-lg: 0 8px 32px rgba(0,0,0,0.10);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --transition: 0.2s ease;
+            --font-mono: 'SF Mono','Cascadia Code','Consolas','Monaco','Menlo',monospace;
+            --preview-bg: #272727;
+            --preview-card-bg: #1e1e1e;
+            --preview-text: #e0d5c5;
+            --preview-border: #4a3f35;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height:100vh;
+            display:flex;
+            align-items:flex-start;
+            justify-content:center;
+            padding:12px;
+            background-image: radial-gradient(ellipse at 30% 20%, rgba(193,127,89,0.06) 0%, transparent 60%),
+            radial-gradient(ellipse at 70% 80%, rgba(160,140,110,0.05) 0%, transparent 60%);
+        }
+        .app-container {
+            width:100%;
+            max-width:1300px;
+            background:var(--card-bg);
+            border-radius:20px;
+            box-shadow:var(--shadow-lg);
+            padding:32px 28px;
+            display:flex;
+            flex-direction:column;
+            gap:20px;
+        }
+        .app-header h1 { font-size:2rem; font-weight:700; text-align:center; }
+        .subtitle { text-align:center; font-size:0.95rem; color:var(--text-secondary); }
+        .input-section { display:flex; flex-direction:column; gap:12px; }
+        .input-row { display:flex; gap:10px; align-items:stretch; flex-wrap:wrap; }
+        .textarea-wrapper { flex:1; min-width:280px; display:flex; }
+        .textarea-wrapper textarea {
+            flex:1; padding:14px 16px; font-size:1.05rem; font-family:var(--font-mono);
+            letter-spacing:0.04em; border:2px solid var(--border); border-radius:var(--radius);
+            background:var(--input-bg); color:var(--text); outline:none; resize:vertical;
+            line-height:1.6; min-height:10em;
+        }
+        .btn {
+            padding:12px 20px; border:none; border-radius:var(--radius-sm); cursor:pointer;
+            font-size:0.9rem; font-weight:600; display:inline-flex; align-items:center; gap:6px;
+            background:#f8f5f0; color:var(--text-secondary); border:1.5px solid var(--border);
+        }
+        .btn-primary { background:var(--accent); color:#fff; border:none; }
+        .btn-primary:hover { background:var(--accent-hover); }
+        .btn:hover { background:#f0ebe0; }
+        .btn-example { padding:6px 12px; font-size:0.85rem; font-family:var(--font-mono); }
+        .icon-btn {
+            width:40px; height:40px; padding:2px; background:#f8f5f0;
+            border:1.5px solid var(--border); border-radius:8px; cursor:pointer;
+            display:inline-flex; align-items:center; justify-content:center;
+            font-weight:700; font-size:1rem;
+        }
+        .icon-btn img { width:32px; height:32px; object-fit:contain; }
+        .icon-btn.active { background:#e8d5c0; border-color:var(--accent); }
+        .icon-btn.bg-active { background:#c17f59; color:#fff; border-color:#a06b48; }
+        #btnStyleSwitch { padding:4px; min-width:44px; min-height:44px; }
+        #btnStyleSwitch img { max-width:32px; max-height:32px; }
+        .examples-row, .course-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:6px; }
+        .controls-row { display:flex; flex-wrap:wrap; gap:18px; align-items:center; }
+        .control-item input[type="number"] { width:80px; padding:6px 8px; border:2px solid var(--border); border-radius:6px; font-family:var(--font-mono); background:var(--input-bg); }
+        .preview-outer {
+            background: var(--preview-bg); border:2px dashed var(--preview-border);
+            border-radius:var(--radius); padding:16px;
+            display:flex; flex-direction:column; gap:20px;
+            overflow: visible;
+        }
+        .preview-row {
+            background: var(--preview-card-bg); border:1px solid var(--preview-border);
+            border-radius:10px; padding:12px; box-shadow:0 1px 4px rgba(0,0,0,0.3);
+        }
+        .preview-row-header { display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:8px; color:var(--preview-text); }
+        .preview-canvas-wrapper { display:flex; justify-content:flex-start; align-items:center; width:100%; overflow: visible; }
+        .preview-canvas-wrapper canvas { display:block; border:1px solid var(--preview-border); background:transparent; max-width:none; height:auto; }
+        .info-bar { display:flex; gap:16px; flex-wrap:wrap; font-size:0.82rem; color:var(--text-secondary); }
+        .legend, .tutorial { display:flex; flex-wrap:wrap; gap:12px; font-size:0.78rem; color:var(--text-secondary); }
+        .legend span, .tutorial span { background:#f8f5f0; padding:4px 10px; border-radius:14px; }
+        .legend code, .tutorial code { font-family:var(--font-mono); background:#e8e0d2; padding:2px 6px; border-radius:4px; }
+        .file-upload { display:inline-block; position:relative; overflow:hidden; }
+        .file-upload input[type=file] { position:absolute; left:0; top:0; opacity:0; width:100%; height:100%; cursor:pointer; }
+        #divergenceWarning {
+            background: #1e1e1e; color: #e0d5c5; padding: 8px 16px;
+            border-radius: 8px; text-align: center; font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <div class="app-header">
+        <h1>🎵 太鼓之达人鱼蛋生成器</h1>
+        <p class="subtitle">Made by Doveon a.k.a meの我 & Deepseek</p>
+    </div>
+    <div class="input-section">
+        <div class="input-row">
+            <div class="textarea-wrapper">
+                <textarea id="inputString" placeholder="每行一个排列，括号可跨行&#10;TJA模式下可粘贴TJA内容"></textarea>
+            </div>
+            <button class="btn btn-primary" id="btnMergeView">📦 合并显示</button>
+        </div>
+        <div class="controls-row">
+            <div class="control-item"><label for="hsInput"><strong>HS 倍率</strong></label><input type="number" id="hsInput" value="1.0" step="0.1" min="0.1"></div>
+            <div class="control-item"><label><input type="checkbox" id="smallifyToggle"> 大音符→小音符</label></div>
+            <div class="control-item"><label><input type="checkbox" id="tjaMergeLinesCheckbox" checked> 合并短行</label></div>
+            <div class="control-item"><label><input type="checkbox" id="ignoreScrollToggle"> 忽略SCROLL</label></div>
+            <button id="invertToggle" class="icon-btn" title="颠倒"><img src="img/Icon/Abekobe.png" alt="颠倒"></button>
+            <button id="btnRandom" class="icon-btn" title="随机"><img src="img/Icon/Random.png" alt="随机"></button>
+            <button id="bgMergeToggle" class="icon-btn" title="合并背景">BG</button>
+            <button class="btn" id="btnStyleSwitch" title="切换样式">🎨</button>
+            <button class="btn" id="btnResetView">📄 显示原谱</button>
+            <button class="btn" id="btnModeSwitch">📝 切换到TJA模式</button>
+            <button class="btn" id="btnTJAtoText" style="display:none;">🔄 TJA转文本</button>
+            <span class="file-upload btn" id="tjaUploadBtn">
+                📂 加载TJA <input type="file" id="tjaFileInput" accept=".tja,.txt">
+            </span>
+        </div>
+        <div id="courseContainer" style="display:none;" class="course-row">
+            <span class="examples-label">难度选择：</span>
+        </div>
+        <div class="examples-row" id="examplesRow">
+            <span class="examples-label">快捷示例：</span>
+        </div>
+    </div>
+    <div id="divergenceWarning" style="display:none;">暂不支持谱面分歧</div>
+    <div class="preview-outer" id="previewContainer">
+        <div style="text-align:center;color:var(--preview-text);padding:30px;" id="placeholder">🎼 输入音符字符串开始预览</div>
+    </div>
+    <div class="info-bar" id="infoBar"></div>
+    <div class="tutorial" id="tutorialBox">
+        <span>✏️ 高亮：<code>*</code> 后首个音符发光</span>
+        <span>📏 小节线：<code>|</code> 后首个音符添加指示线</span>
+    </div>
+    <div class="legend">
+        <span>默认间隔16分</span><span><code>( )</code> ×1.5</span><span><code>[ ]</code> ×2</span><span><code>{ }y</code> y分音</span>
+        <span>空格空音符</span><span>o/x 小音符</span><span>O/X 大音符</span><span>c 气球</span>
+    </div>
+</div>
+<script>
+  (() => {
+    const textarea = document.getElementById('inputString');
+    const previewContainer = document.getElementById('previewContainer');
+    const placeholder = document.getElementById('placeholder');
+    const btnMergeView = document.getElementById('btnMergeView');
+    const bgMergeToggle = document.getElementById('bgMergeToggle');
+    const hsInput = document.getElementById('hsInput');
+    const smallifyToggle = document.getElementById('smallifyToggle');
+    const tjaMergeLinesCheckbox = document.getElementById('tjaMergeLinesCheckbox');
+    const ignoreScrollToggle = document.getElementById('ignoreScrollToggle');
+    const invertToggle = document.getElementById('invertToggle');
+    const btnStyleSwitch = document.getElementById('btnStyleSwitch');
+    const btnRandom = document.getElementById('btnRandom');
+    const btnResetView = document.getElementById('btnResetView');
+    const btnModeSwitch = document.getElementById('btnModeSwitch');
+    const btnTJAtoText = document.getElementById('btnTJAtoText');
+    const tjaFileInput = document.getElementById('tjaFileInput');
+    const tjaUploadBtn = document.getElementById('tjaUploadBtn');
+    const courseContainer = document.getElementById('courseContainer');
+    const examplesRow = document.getElementById('examplesRow');
+    const infoBar = document.getElementById('infoBar');
+    const tutorialBox = document.getElementById('tutorialBox');
+    const divergenceWarning = document.getElementById('divergenceWarning');
+
+    const IMG_SMALL = 106, IMG_BIG = 160, IMG_BALLOON_W = 253, IMG_BALLOON_H = 106;
+    const DEFAULT_GAP = 90, FIXED_HEIGHT = 200;
+    const MAX_GAP_SUM = 64 * DEFAULT_GAP;
+    const styleSequence = [0, 1, 0, 2];
+    let currentStyleIndex = 0, currentStyle = styleSequence[currentStyleIndex];
+
+    const imgOSmall = new Image(), imgXSmall = new Image(), imgOBig = new Image(), imgXBig = new Image(), imgC = new Image();
+    const barImage = new Image(); barImage.src = 'img/bar.png';
+    const loaded = { o: false, x: false, O: false, X: false, c: false };
+
+    const EMBEDDED_TJA = `TITLE:Black Rose Apostle
+SUBTITLE:--
+BPM:204
+WAVE:Black Rose Apostle.ogg
+OFFSET:-2.603
+DEMOSTART:38.185
+
+COURSE:Edit
+LEVEL:10
+BALLOON:9
+SCOREINIT:400
+SCOREDIFF:98
+
+
+#START
+
+
+#SCROLL 0.5
+#MEASURE 8/4
+1020102010201120,
+1020102010201120,
+1020102010201120,
+1020102010201120,
+1212121212121212,
+10101010101010102222112211111111,
+#SCROLL 1
+#BPMCHANGE 102
+#MEASURE 5/8
+1,
+#BPMCHANGE 204
+#MEASURE 6/8
+302212,
+121222,
+121212,
+212221,
+321212,
+212121,
+212122,
+212121,
+321212,
+122212,
+121222,
+121212,
+321222,
+121212,
+#MEASURE 4/4
+32222212,
+12121222,
+32121212,
+12121212,
+1020102011221222,
+2111211211111111,
+#MEASURE 2/4
+21111111,
+#MEASURE 4/4
+1022102010222020,
+1022102010222020,
+1022102010221020,
+1022102010222020,
+2011201020112010,
+2011201020122010,
+2011201020112010,
+2022222020112222,
+1020102010221020,
+1020102010222020,
+1020102010221020,
+1020102010222020,
+1122102010221020,
+1122102010202022,
+1022202010221020,
+1020102010221201,
+2222111122221111,
+7008,
+#SCROLL 0.5
+#MEASURE 8/4
+10102020101022201010202010102220,
+10102020101022201010202010102220,
+22201020202010102222101022201010,
+11111111222222222222111122221111,
+#SCROLL 1
+#MEASURE 4/4
+2011112011112011,
+1120112020112011,
+2011112011112011,
+1120112011202022,
+2011112011112011,
+1120111120112011,
+2011112011112011,
+2211221122221111,
+2211221111111111,
+#SCROLL 0.5
+,//60
+
+#SCROLL 1
+#GOGOSTART
+4011201111211120,
+2011201120111120,
+2011201120111120,
+2011201121112011,
+2011201122112011,
+2011221122112011,
+2011201122112011,
+2120112011201122,
+2010112010112010,
+1120111020112011,
+2010112010112011,
+1022101122112011,
+2011201120112121,
+1011201121112121,
+1011201120112121,
+1111201120112121,
+1011201120112121,
+1011201021102020,
+1111201120112011,
+2011111122112211,
+2011112011112011,
+1111201111111111,
+1,
+1111111122222222,
+13000000,
+
+#GOGOEND
+
+
+#END
+
+
+COURSE:Oni
+LEVEL:10
+BALLOON:9,18
+SCOREINIT:420
+SCOREDIFF:100
+
+
+#START
+
+
+#SCROLL 0.5
+#MEASURE 8/4
+11111010201010101111101020101010,
+11111010201010201111101020101010,
+11111010201010101111101020101010,
+11111010201010201111101020101010,
+11111010201020101111101020102010,
+11111020111110201111111111111110,
+#MEASURE 5/8
+#SCROLL 1
+#BPMCHANGE 102
+,
+#BPMCHANGE 204
+#MEASURE 3/4
+101120111010,
+201011102110,
+101220111010,
+201011102210,
+101120111010,
+201011102110,
+101220111010,
+201011102210,
+201110201110,
+201110201110,
+201210201210,
+201121102120,
+201110201110,
+201210201210,
+#MEASURE 4/4
+1011201110112011,
+1011211021112010,
+1011201110112011,
+1011211021112010,
+1110212011102120,
+1111222212121212,
+#MEASURE 2/4
+10201111,
+#MEASURE 4/4
+1020112010221020,
+1020112010221020,
+1020112010201120,
+1022102010201120,
+1020112010221020,
+1020112010221020,
+1020112010201120,
+1022102010201120,
+1020112010221020,
+1020112010221020,
+1020112010201120,
+1022102010201120,
+1020112010221020,
+1020112010221020,
+1021112010221020,
+1021112010221020,
+1121102011112222,
+7008,
+#SCROLL 0.5
+#MEASURE 8/4
+10001111200010101010200010001000,
+10001111200010101010200020001000,
+10001111200010101010200010001000,
+10001111200010101010200011112000,
+#SCROLL 1
+#MEASURE 4/4
+3011102011101011,
+1020111030403040,
+3011102011101011,
+1020111040404000,
+3021102021101021,
+1020211030403040,
+3022201022201020,
+1020112010201120,
+33333333,
+#SCROLL 0.5
+,//60
+
+#SCROLL 1
+#GOGOSTART
+1011201110112011,
+1011211021102010,
+1011201110112011,
+1011211021112010,
+1011201110112011,
+1011211021102010,
+1011201110112011,
+1011211021112010,
+2011102011102011,
+1020111021112010,
+2012102012102012,
+1020121021212011,
+1110201010112011,
+1110201010112011,
+1120201010112011,
+1120201010112011,
+1011201110112011,
+1011201110112030,
+03400000,
+1010222010102220,
+1022201022201000,
+1022201000002020,
+7,
+00008000,
+#SCROLL 5.73
+33000000,
+
+#GOGOEND
+
+
+#END
+
+
+COURSE:Hard
+LEVEL:8
+BALLOON:3,8,11,20
+SCOREINIT:690
+SCOREDIFF:150
+
+#START
+#SCROLL 0.5
+#MEASURE 8/4
+3,
+4,
+3,
+4,
+3,
+300000000000000000000000600000000000000000000008,
+#MEASURE 5/8
+#SCROLL 1
+#BPMCHANGE 102
+,
+#MEASURE 3/4
+#BPMCHANGE 204
+102110,
+201120,
+102110,
+201120,
+102110,
+201120,
+102110,
+201120,
+222111,
+222111,
+222111,
+212120,
+111222,
+111222,
+#MEASURE 4/4
+10201120,
+11202110,
+10201120,
+11202110,
+11221122,
+12121212,
+#MEASURE 2/4
+78,
+#MEASURE 4/4
+10201121,
+01201120,
+10201121,
+01201120,
+10201121,
+01201120,
+10210120,
+10201121,
+10201121,
+01201120,
+10201121,
+01201120,
+10201120,
+10201220,
+10201120,
+10201220,
+12121212,
+7008,
+#SCROLL 0.5
+#MEASURE 8/4
+1011201010201010,
+1011201010102020,
+2011201010201010,
+1011201020202000,
+#SCROLL 1
+#MEASURE 4/4
+30030030,
+03003030,
+30030030,
+03003330,
+30030030,
+03003030,
+30030030,
+4444,
+7,
+#SCROLL 0.5
+8,//60
+
+#SCROLL 1
+#GOGOSTART
+11201021,
+01201120,
+10210120,
+3330,
+11201021,
+01201120,
+10210120,
+3330,
+22211122,
+21112120,
+22211122,
+21112121,
+01102021,
+01102021,
+01102021,
+01102021,
+01102011,
+01102011,
+0300,
+33,
+7,
+,
+8,
+,
+33000000,
+,
+,
+,//88
+
+#GOGOEND
+,
+,
+,
+#END
+
+COURSE:Normal
+LEVEL:6
+BALLOON:16,24,16
+SCOREINIT:850
+SCOREDIFF:210
+
+#START
+#SCROLL 0.5
+#MEASURE 8/4
+3,
+4,
+3,
+4,
+3,
+300000000000000000000000600000000000000000000008,
+#MEASURE 5/8
+#SCROLL 1
+#BPMCHANGE 102
+,
+#MEASURE 3/4
+#BPMCHANGE 204
+101110,
+101,
+101,
+101,
+101110,
+101,
+101,
+101,
+22,
+22,
+22,
+222,
+22,
+22,
+#MEASURE 4/4
+22,
+2220,
+2220,
+2220,
+7,
+,
+#MEASURE 2/4
+8,
+#MEASURE 4/4
+11,
+10101110,
+11,
+10101110,
+11,
+10102220,
+11,
+2220,
+11,
+10101110,
+11,
+10101110,
+11,
+10102220,
+11,
+2220,
+1111,
+1,
+#SCROLL 0.5
+#MEASURE 8/4
+10201011,
+10202011,
+10201011,
+10202220,
+#SCROLL 1
+#MEASURE 4/4
+30030030,
+03003030,
+30030030,
+03003030,
+30030030,
+03003030,
+9,
+,
+0900,
+#SCROLL 0.5
+8,//60
+
+#SCROLL 1
+#GOGOSTART
+1110,
+10111000,
+1110,
+10111000,
+1110,
+10111000,
+1110,
+10111000,
+20020020,
+0220,
+20020020,
+00202001,
+00101001,
+00101002,
+00202002,
+00202001,
+00101001,
+00101003,
+0300,
+33,
+9,
+09,
+8,
+,
+33000000,
+,
+,
+,//88
+
+#GOGOEND
+,
+,
+,
+#END
+
+COURSE:Easy
+LEVEL:5
+BALLOON:14,20,14
+SCOREINIT:690
+SCOREDIFF:180
+
+#START
+#SCROLL 0.5
+#MEASURE 8/4
+3,
+4,
+3,
+4,
+3,
+300000000000000000000000600000000000000000000008,
+#MEASURE 5/8
+#SCROLL 1
+#BPMCHANGE 102
+,
+#MEASURE 3/4
+#BPMCHANGE 204
+111,
+1,
+1,
+111,
+1,
+1,
+111,
+1,
+2,
+2,
+2,
+222,
+2,
+2,
+#MEASURE 4/4
+22,
+2220,
+22,
+2220,
+7,
+,
+#MEASURE 2/4
+8,
+#MEASURE 4/4
+1110,
+11,
+1110,
+11,
+1110,
+11,
+2,
+2220,
+1110,
+11,
+1110,
+11,
+1110,
+11,
+2,
+2220,
+1111,
+1,
+#SCROLL 0.5
+#MEASURE 8/4
+10001011,
+10002011,
+10001011,
+1022,
+#SCROLL 1
+#MEASURE 4/4
+3003,
+0033,
+3003,
+03,
+3003,
+0033,
+9,
+,
+0900,
+#SCROLL 0.5
+8,//60
+
+#SCROLL 1
+#GOGOSTART
+1110,
+1110,
+11,
+500000000000000000000008000000000000000000000000,
+1110,
+1110,
+11,
+500000000000000000000008000000000000000000000000,
+22,
+2220,
+22,
+2220,
+0110,
+0110,
+0220,
+0220,
+1110,
+10101005,
+000000000000000000000008000000000000000000000000,
+33,
+9,
+09,
+8,
+,
+3,
+,
+,
+,//88
+
+#GOGOEND
+,
+,
+,
+#END`;
+
+    function updateImageSources() {
+      const p = 'img/' + currentStyle + '/';
+      imgOSmall.src = p+'o.png'; imgXSmall.src = p+'x.png'; imgOBig.src = p+'oo.png'; imgXBig.src = p+'xx.png'; imgC.src = p+'c.png';
+    }
+    function bindImageEvents() {
+      imgOSmall.onload=()=>{ loaded.o=true; checkAllLoaded(); };
+      imgOSmall.onerror=()=>{ loaded.o=false; checkAllLoaded(); };
+      imgXSmall.onload=()=>{ loaded.x=true; checkAllLoaded(); };
+      imgXSmall.onerror=()=>{ loaded.x=false; checkAllLoaded(); };
+      imgOBig.onload=()=>{ loaded.O=true; checkAllLoaded(); };
+      imgOBig.onerror=()=>{ loaded.O=false; checkAllLoaded(); };
+      imgXBig.onload=()=>{ loaded.X=true; checkAllLoaded(); };
+      imgXBig.onerror=()=>{ loaded.X=false; checkAllLoaded(); };
+      imgC.onload=()=>{ loaded.c=true; checkAllLoaded(); };
+      imgC.onerror=()=>{ loaded.c=false; checkAllLoaded(); };
+    }
+    updateImageSources(); bindImageEvents();
+
+    let pendingRender = false;
+    function checkAllLoaded() {
+      if (pendingRender) return;
+      pendingRender = true;
+      requestAnimationFrame(() => { pendingRender = false; render(); });
+    }
+
+    let randomMap = null, invertActive = false, mergeViewActive = false, backgroundMergeActive = false;
+    let tjaModeActive = false, tjaCourses = [], selectedCourse = null;
+    let tjaMergeLinesActive = true;
+    let ignoreScrollActive = false;
+
+    const examples = [
+      { label: '夏祭', value: 'ooo ooo ooo xxx' },
+      { label: '灵魂石', value: '(ooox)o(ooox)o(xooooox)ooo' },
+      { label: '工作2000', value: 'o[xxx]xo[xxx]x[ooo]oox X' },
+      { label: '里2354', value: 'xxxxooooxxxx{ooooo}20ooooo' },
+      { label: '闪光天舞', value: '{xooxo[oox]oxooxox[oox]oxooxoxo}12\n(x   o x   o xxxxxxo o o x xxoox o xxx ooxxo   o)' },
+      { label: '里operate me', value: '{OooXxxOooXooXxxOooXxxOxx\nOooXxxOooXooXxxOooXxxOxx\nOoXxOoXxOoXxOoXoXoXxOxOx\n[oooo]}12xx(oooo) xxoooox' },
+      { label: 'Hurtling Boys', value: '(ooxooxooxooxooox)ox(ooox)ox(oxooox)' },
+      { label: '里Lightning Boys', value: '(oooo)xoxox(oooo)xoxox(oooo)x(oooo)x(ooxooxooxx)\n(ooxooxooxx)oxoxo(xoxoxox)' },
+      { label: 'Aragami', value: 'oooxxxoooxxxooxxooooxxxx\noooxxxoooxxxoxxxoxxxoxox\nooooxxooooxxooxxooxxooxx\noxoxoxox(oxoxoxo)ooooooxoo(oooo)' },
+      { label: '里Dangan Notes', value: '[oo(o]ooo)oo[oo(o]ooo)oooooox' }
+    ];
+    function renderExamples() {
+      examplesRow.innerHTML = '<span class="examples-label">快捷示例：</span>';
+      examples.forEach(ex => {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-example';
+        btn.textContent = ex.label;
+        btn.dataset.input = ex.value;
+        btn.addEventListener('click', () => {
+          textarea.value = btn.dataset.input.replace(/\\n/g, '\n');
+          tjaModeActive = false;
+          btnModeSwitch.textContent = '📝 切换到TJA模式';
+          courseContainer.style.display = 'none';
+          render();
+        });
+        examplesRow.appendChild(btn);
+      });
+    }
+
+    function normalize(str) { return str.replace(/（/g,'(').replace(/）/g,')').replace(/【/g,'[').replace(/】/g,']').replace(/｛/g,'{').replace(/｝/g,'}').replace(/，/g,' ').replace(/,/g,' '); }
+    function buildCurlyMap(str) {
+      const map = new Map(), stack = [];
+      for (let i=0;i<str.length;i++) {
+        if (str[i]==='{') stack.push(i);
+        else if (str[i]==='}' && stack.length) {
+          const left = stack.pop(); let j=i+1, num='';
+          while (j<str.length && (str[j].match(/[0-9.]/)||str[j]==='.')) { if(str[j]==='\n'){j++;continue;} num+=str[j]; j++; }
+          let y=parseFloat(num); if(isNaN(y)||y<=0) y=16; map.set(left, 16/y);
+        }
+      }
+      return map;
+    }
+    function parseGlobal(input) {
+      const norm = normalize(input), curlyMap = buildCurlyMap(norm);
+      const rows = []; let cur = [], typeS=[], factS=[], pendHigh=false, pendBar=false;
+      for (let i=0;i<norm.length;i++) {
+        const ch=norm[i];
+        if (ch==='\n') { if(cur.length) rows.push(cur); cur=[]; pendHigh=false; pendBar=false; continue; }
+        if (ch==='*') { pendHigh=true; continue; }
+        if (ch==='|') { pendBar=true; continue; }
+        if ('oxOXc '.includes(ch)) {
+          const path=[1,...factS], el={type:ch===' '?'space':ch, pathFactors:path, highlight:false, hasBar:false};
+          if (ch!==' '&&pendHigh) { el.highlight=true; pendHigh=false; }
+          else if (ch===' ') pendHigh=false;
+          if (pendBar && ch!==' ') { el.hasBar = true; pendBar = false; }
+          else if (ch===' ') pendBar = false;
+          cur.push(el);
+        } else if (ch==='(') { typeS.push('('); factS.push(2/3); }
+        else if (ch==='[') { typeS.push('['); factS.push(1/2); }
+        else if (ch==='{') { typeS.push('{'); factS.push(curlyMap.has(i)?curlyMap.get(i):1); }
+        else if (')]'.includes(ch)) {
+          const exp=ch===')'?'(':'['; const idx=typeS.lastIndexOf(exp); if(idx!==-1){typeS.splice(idx,1); factS.splice(idx,1);}
+        } else if (ch==='}') { const idx=typeS.lastIndexOf('{'); if(idx!==-1){typeS.splice(idx,1); factS.splice(idx,1);} }
+        else { pendHigh=false; pendBar=false; }
+      }
+      if (cur.length||!rows.length) rows.push(cur);
+      return rows.filter(r=>r.length);
+    }
+    function getGapFactor(a, b) {
+      const used = new Array(b.length).fill(false);
+      let factor = 1;
+      for (let i = 0; i < a.length; i++) {
+        for (let j = 0; j < b.length; j++) {
+          if (!used[j] && Math.abs(a[i] - b[j]) < 1e-9) {
+            factor *= a[i];
+            used[j] = true;
+            break;
+          }
+        }
+      }
+      return factor;
+    }
+    
+    function layoutLine(elements, hsScale, baseGapForSpaceRow) {
+      const pos=[]; let x=0;
+      for (let i=0;i<elements.length;i++) { pos.push(x); if(i<elements.length-1) x+=DEFAULT_GAP*getGapFactor(elements[i].pathFactors, elements[i+1].pathFactors)*hsScale; }
+      let minX=Infinity,maxX=-Infinity;
+      let firstNoteCenterX = IMG_SMALL/2;
+      elements.forEach((el,idx)=>{
+        if(el.type==='space')return;
+        let size, ox;
+        if (el.type === 'c') { size = IMG_BALLOON_W; ox = -0.5; }
+        else { const isBig=el.type==='O'||el.type==='X'; size=isBig?IMG_BIG:IMG_SMALL; ox=isBig?-(IMG_BIG-IMG_SMALL)/2:0; }
+        const left=pos[idx]+ox;
+        if(left<minX)minX=left;
+        if(left+size>maxX)maxX=left+size;
+        if(idx===0 || !firstNoteCenterX) firstNoteCenterX = pos[idx] + IMG_SMALL/2;
+      });
+      if(minX===Infinity){
+        if (baseGapForSpaceRow && elements.length===1 && elements[0].type==='space') {
+          const w = baseGapForSpaceRow * hsScale;
+          return { elements, positions:[0], minX:0, maxX:w, width:w, height:FIXED_HEIGHT, firstNoteCanvasX:IMG_SMALL/2, firstNoteCanvasY:100 };
+        }
+        minX=0;maxX=IMG_SMALL;
+      }
+      const width = maxX-minX;
+      const firstNoteCanvasX = firstNoteCenterX - minX;
+      return { elements, positions:pos, minX, maxX, width, height:FIXED_HEIGHT, firstNoteCanvasX, firstNoteCanvasY:100 };
+    }
+
+    function invertType(t,inv){ if(!inv||t==='c')return t; if(t==='o')return'x';if(t==='x')return'o';if(t==='O')return'X';if(t==='X')return'O';return t; }
+    function smallifyType(t){ return t==='O'?'o':t==='X'?'x':t; }
+
+    function drawLine(canvas, layout, doInvert, doSmallify, randomMapRow) {
+      const ctx=canvas.getContext('2d');
+      canvas.width = Math.ceil(layout.width);
+      canvas.height = FIXED_HEIGHT;
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      for (let i=0; i<layout.elements.length; i++) {
+        const el = layout.elements[i];
+        if (!el.hasBar) continue;
+        const centerX = layout.positions[i] + IMG_SMALL/2 - layout.minX;
+        const centerY = 100;
+        if (barImage.complete && barImage.naturalWidth > 0) {
+          const bw = barImage.naturalWidth || 5, bh = barImage.naturalHeight || 200;
+          ctx.drawImage(barImage, centerX - bw/2, centerY - bh/2, bw, bh);
+        }
+      }
+      ctx.save();
+      ctx.translate(-layout.minX, 0);
+      for (let i=layout.elements.length-1; i>=0; i--) {
+        const el = layout.elements[i];
+        if (el.type === 'space') continue;
+        let drawType = el.type;
+        if (randomMapRow && randomMapRow[i]) { if (drawType!=='c') drawType = (drawType==='o')?'x':(drawType==='x')?'o':(drawType==='O')?'X':(drawType==='X')?'O':drawType; }
+        drawType = invertType(drawType, doInvert);
+        if (doSmallify && drawType!=='c') drawType = smallifyType(drawType);
+        let size, drawX, drawY, img;
+        if (drawType === 'c') {
+          size = IMG_BALLOON_W; drawX = layout.positions[i] - 0.5; drawY = 100 - IMG_BALLOON_H/2; img = imgC;
+        } else {
+          const isBig = drawType==='O'||drawType==='X';
+          size = isBig ? IMG_BIG : IMG_SMALL;
+          drawY = 100 - size/2;
+          drawX = isBig ? layout.positions[i] - (IMG_BIG - IMG_SMALL)/2 : layout.positions[i];
+          img = {o:imgOSmall, x:imgXSmall, O:imgOBig, X:imgXBig}[drawType];
+        }
+        if (el.highlight) { ctx.shadowColor='white'; ctx.shadowBlur=20; }
+        if (img && loaded[drawType] && img.complete && img.naturalWidth>0) {
+          if (drawType==='c') ctx.drawImage(img, drawX, drawY, size, IMG_BALLOON_H);
+          else ctx.drawImage(img, drawX, drawY, size, size);
+        } else {
+          ctx.save();
+          const cx = drawX + size/2, cy = drawY + (drawType==='c'?IMG_BALLOON_H:size)/2;
+          ctx.beginPath(); ctx.arc(cx, cy, size*0.42, 0, Math.PI*2);
+          ctx.fillStyle = (drawType==='o'||drawType==='O') ? '#F84828' : (drawType==='x'||drawType==='X') ? '#68c0c0' : '#FFD700';
+          ctx.fill();
+          ctx.restore();
+        }
+        if (el.highlight) { ctx.shadowColor='transparent'; ctx.shadowBlur=0; }
+      }
+      ctx.restore();
+    }
+
+    function parseTJA(text) {
+      const courses = [];
+      const lines = text.split('\n');
+      let currentCourse = null;
+      let inStart = false;
+      let b = 1, a = 1;
+      let buffer = '';
+      const mapDigit = {'0':' ','1':'o','2':'x','3':'O','4':'X','5':' ','6':' ','7':'c','8':' ','9':' '};
+      const flushBuffer = () => {
+        if (buffer.length === 0) return;
+        const digits = buffer.replace(/\s/g, '');
+        if (digits.length === 0) { buffer=''; return; }
+        const n = digits.length;
+        const baseGap = DEFAULT_GAP * 16 * a * b / n;
+        const elements = [];
+        for (let dIdx=0; dIdx<digits.length; dIdx++) {
+          const ch = digits[dIdx];
+          const mapped = mapDigit[ch] || ' ';
+          elements.push({ type: mapped === ' ' ? 'space' : mapped, pathFactors: [1], hasBar: false });
+        }
+        if (elements.length > 0) elements[0].hasBar = true;
+        currentCourse.rows.push({ elements, baseGap });
+        buffer = '';
+      };
+      for (let line of lines) {
+        line = line.trim();
+        const commentIndex = line.indexOf('//');
+        if (commentIndex !== -1) line = line.substring(0, commentIndex).trim();
+        if (line === '') continue;
+        if (line.startsWith('COURSE:')) {
+          flushBuffer();
+          if (currentCourse && currentCourse.rows.length) courses.push(currentCourse);
+          const name = line.replace('COURSE:','').trim();
+          currentCourse = { name, rows: [] };
+          inStart = false; b=1; a=1; buffer = '';
+        } else if (line === '#START') {
+          flushBuffer(); inStart = true; b=1; a=1; buffer = '';
+        } else if (line === '#END') {
+          flushBuffer(); inStart = false;
+        } else if (inStart && currentCourse) {
+          if (line.startsWith('#MEASURE')) {
+            flushBuffer();
+            const expr = line.replace('#MEASURE','').trim();
+            const parts = expr.split('/');
+            if (parts.length === 2) a = parseFloat(parts[0]) / parseFloat(parts[1]);
+            else a = parseFloat(expr) || 1;
+          } else if (line.startsWith('#SCROLL')) {
+            if (!ignoreScrollActive) {
+              const val = parseFloat(line.replace('#SCROLL','').trim());
+              if (!isNaN(val)) b = val;
+            }
+          } else if (line.startsWith('#BPMCHANGE')) {
+          } else if (!line.startsWith('#')) {
+            const cleanLine = line.replace(/\s/g, '');
+            if (cleanLine === ',' || cleanLine === '') {
+              flushBuffer();
+              const totalLength = DEFAULT_GAP * 16 * a * b;
+              const emptyElement = { type: 'space', pathFactors: [1], hasBar: true };
+              currentCourse.rows.push({ elements: [emptyElement], baseGap: totalLength });
+            } else {
+              buffer += cleanLine;
+              while (buffer.includes(',')) {
+                const commaIdx = buffer.indexOf(',');
+                const seg = buffer.substring(0, commaIdx);
+                buffer = buffer.substring(commaIdx + 1);
+                if (seg.length > 0) {
+                  const n = seg.length;
+                  const baseGap = DEFAULT_GAP * 16 * a * b / n;
+                  const elements = [];
+                  for (let dIdx=0; dIdx<seg.length; dIdx++) {
+                    const ch = seg[dIdx];
+                    const mapped = mapDigit[ch] || ' ';
+                    elements.push({ type: mapped === ' ' ? 'space' : mapped, pathFactors: [1], hasBar: false });
+                  }
+                  if (elements.length > 0) elements[0].hasBar = true;
+                  currentCourse.rows.push({ elements, baseGap });
+                } else {
+                  const totalLength = DEFAULT_GAP * 16 * a * b;
+                  const emptyElement = { type: 'space', pathFactors: [1], hasBar: true };
+                  currentCourse.rows.push({ elements: [emptyElement], baseGap: totalLength });
+                }
+              }
+            }
+          }
+        }
+      }
+      flushBuffer();
+      if (currentCourse && currentCourse.rows.length) courses.push(currentCourse);
+      return courses;
+    }
+
+    function convertTJAtoText(courseRows) {
+        return courseRows.map(row => {
+            const notes = row.elements.map(el => el.type === 'space' ? ' ' : el.type).join('');
+            const y = 1440 / row.baseGap;
+            if (Math.abs(y - 16) < 0.001) return notes;
+            const yStr = Number.isInteger(y) ? y.toString() : y.toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
+            return `{${notes}}${yStr}`;
+        }).join('\n');
+    }
+
+    function mergeTJARows(rows, hsScale) {
+      const layouts = [];
+      let group = { elements: [], positions: [], gapSum: 0, gapToNext: 0, rowCount: 0 };
+      for (let r=0; r<rows.length; r++) {
+        const row = rows[r];
+        const scaledBase = row.baseGap * hsScale;
+        const isSpaceRow = row.elements.length === 1 && row.elements[0].type === 'space';
+        const currentGapSum = isSpaceRow ? scaledBase : scaledBase * (row.elements.length - 1);
+        const gapBetween = group.rowCount > 0 ? group.gapToNext : 0;
+        if (group.rowCount === 0 || (group.gapSum + gapBetween + currentGapSum) <= MAX_GAP_SUM) {
+          if (group.rowCount > 0) group.positions.push(group.positions[group.positions.length-1] + group.gapToNext);
+          for (let i=0; i<row.elements.length; i++) {
+            const el = row.elements[i];
+            const newEl = { ...el, hasBar: el.hasBar };
+            if (isSpaceRow) newEl.spaceWidth = scaledBase;
+            group.elements.push(newEl);
+            if (i === 0 && group.rowCount === 0) group.positions.push(0);
+            else if (i > 0) group.positions.push(group.positions[group.positions.length-1] + scaledBase);
+          }
+          group.gapSum = currentGapSum + (group.rowCount > 0 ? gapBetween : 0) + group.gapSum;
+          group.gapToNext = scaledBase;
+          group.rowCount++;
+        } else {
+          if (group.rowCount > 0) layouts.push(buildLayoutFromGroup(group));
+          group = { elements: [], positions: [], gapSum: 0, gapToNext: 0, rowCount: 0 };
+          for (let i=0; i<row.elements.length; i++) {
+            const el = row.elements[i];
+            const newEl = { ...el, hasBar: el.hasBar && i === 0 };
+            if (isSpaceRow) newEl.spaceWidth = scaledBase;
+            group.elements.push(newEl);
+            if (i === 0) group.positions.push(0);
+            else group.positions.push(group.positions[group.positions.length-1] + scaledBase);
+          }
+          group.gapSum = currentGapSum;
+          group.gapToNext = scaledBase;
+          group.rowCount = 1;
+        }
+      }
+      if (group.rowCount > 0) layouts.push(buildLayoutFromGroup(group));
+      return layouts;
+    }
+
+    function buildLayoutFromGroup(group) {
+      const elements = group.elements;
+      const positions = group.positions;
+      let minX = Infinity, maxX = -Infinity;
+      let firstNoteCenterX = IMG_SMALL / 2;
+      elements.forEach((el, idx) => {
+        const pos = positions[idx];
+        if (el.type === 'space') {
+          if (pos < minX) minX = pos;
+          if (el.spaceWidth) { const right = pos + el.spaceWidth; if (right > maxX) maxX = right; }
+          else { const barRight = pos + IMG_SMALL; if (barRight > maxX) maxX = barRight; }
+          return;
+        }
+        let size, ox;
+        if (el.type === 'c') { size = IMG_BALLOON_W; ox = -0.5; }
+        else { const isBig = el.type==='O'||el.type==='X'; size=isBig?IMG_BIG:IMG_SMALL; ox=isBig?-(IMG_BIG-IMG_SMALL)/2:0; }
+        const left = pos + ox;
+        if (left < minX) minX = left;
+        if (left + size > maxX) maxX = left + size;
+        if (idx === 0) firstNoteCenterX = pos + IMG_SMALL / 2;
+      });
+      if (minX === Infinity) { minX = 0; maxX = IMG_SMALL; }
+      return { elements, positions, minX, maxX, width: maxX-minX, height: FIXED_HEIGHT, firstNoteCanvasX: firstNoteCenterX-minX, firstNoteCanvasY:100 };
+    }
+
+    function updateCourseButtons() {
+      courseContainer.innerHTML = '<span class="examples-label">难度选择：</span>';
+      tjaCourses.forEach(c => {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-example'; btn.textContent = c.name;
+        btn.addEventListener('click', () => { selectedCourse = c; render(); });
+        courseContainer.appendChild(btn);
+      });
+      courseContainer.style.display = tjaCourses.length ? 'flex' : 'none';
+    }
+
+    let currentRowLayouts = [];
+
+    function render() {
+      let rowLayouts;
+      const hsVal = parseFloat(hsInput.value); const hsScale = isNaN(hsVal)||hsVal<=0?1:hsVal;
+      const doInvert = invertActive, doSmallify = smallifyToggle.checked;
+      tjaMergeLinesCheckbox.disabled = !tjaModeActive;
+      ignoreScrollToggle.disabled = !tjaModeActive;
+      btnTJAtoText.style.display = tjaModeActive ? 'inline-flex' : 'none';
+      tutorialBox.style.display = tjaModeActive ? 'none' : 'flex';
+      divergenceWarning.style.display = tjaModeActive ? 'block' : 'none';
+
+      if (tjaModeActive && selectedCourse) {
+        if (tjaMergeLinesActive) {
+          rowLayouts = mergeTJARows(selectedCourse.rows, hsScale);
+        } else {
+          rowLayouts = selectedCourse.rows.map(row => {
+            if (row.elements.length === 1 && row.elements[0].type === 'space') return layoutLine(row.elements, hsScale, row.baseGap);
+            return layoutLine(row.elements, hsScale);
+          }).filter(l => l.elements.some(e => e.type !== 'space') || (l.width > 0));
+        }
+      } else {
+        const raw = textarea.value;
+        const rows = parseGlobal(raw);
+        rowLayouts = rows.map(e=>layoutLine(e,hsScale)).filter(l=>l.elements.some(e=>e.type!=='space'));
+      }
+      currentRowLayouts = rowLayouts;
+
+      const modeInfo = tjaModeActive ? (tjaMergeLinesActive ? '合并短行' : '原始分行') : '文本模式';
+      infoBar.innerHTML = `行数:${rowLayouts.length} | 音符:${rowLayouts.reduce((s,l)=>s+l.elements.filter(e=>e.type!=='space').length,0)} | HS:${hsScale.toFixed(2)} | 样式:${currentStyle} | ${modeInfo}`;
+      previewContainer.innerHTML = '';
+      if (!rowLayouts.length) { placeholder.style.display='block'; return; }
+      placeholder.style.display='none';
+
+      if (mergeViewActive || backgroundMergeActive) {
+        const rowCanvases = rowLayouts.map((l,i)=>{ const c=document.createElement('canvas'); drawLine(c,l,doInvert,doSmallify,randomMap?.[i]); return {canvas:c, firstX:l.firstNoteCanvasX, firstY:100}; });
+        const maxFirstX = Math.max(...rowCanvases.map(r=>r.firstX));
+        const finalHeight = 100 + (rowLayouts.length-1)*200 + 100;
+        const maxWidth = Math.max(...rowCanvases.map((r,i)=> (maxFirstX - r.firstX) + r.canvas.width ));
+        const merged = document.createElement('canvas');
+        merged.width = Math.ceil(maxWidth); merged.height = Math.ceil(finalHeight);
+        const ctx = merged.getContext('2d');
+        if(backgroundMergeActive){ ctx.fillStyle='#272727'; ctx.fillRect(0,0,merged.width,merged.height); }
+        let y = 100;
+        rowLayouts.forEach((l,i) => { const c = rowCanvases[i].canvas; ctx.drawImage(c, maxFirstX - rowCanvases[i].firstX, y - 100); if (i < rowLayouts.length-1) y += 200; });
+        const div = document.createElement('div'); div.className = 'preview-row';
+        div.innerHTML = `<div class="preview-row-header"><span>${backgroundMergeActive?'🎨 合并背景':'📦 合并显示'} (${rowLayouts.length}行)</span></div>`;
+        const wrap = document.createElement('div'); wrap.className = 'preview-canvas-wrapper'; wrap.appendChild(merged); div.appendChild(wrap); previewContainer.appendChild(div);
+        const scale = Math.min(1, (previewContainer.clientWidth-32) / maxWidth);
+        merged.style.width = merged.width*scale + 'px'; merged.style.height = merged.height*scale + 'px';
+      } else {
+        const maxFirstX = Math.max(...rowLayouts.map(l => l.firstNoteCanvasX));
+        rowLayouts.forEach((l,i)=>{
+          const origCanvas = document.createElement('canvas');
+          drawLine(origCanvas, l, doInvert, doSmallify, randomMap?.[i]);
+          const extraLeft = maxFirstX - l.firstNoteCanvasX;
+          const finalCanvas = document.createElement('canvas');
+          finalCanvas.width = Math.ceil(extraLeft + l.width);
+          finalCanvas.height = FIXED_HEIGHT;
+          const fctx = finalCanvas.getContext('2d');
+          fctx.drawImage(origCanvas, extraLeft, 0);
+          const div = document.createElement('div'); div.className = 'preview-row';
+          div.innerHTML = `<div class="preview-row-header"><span>🎵 第${i+1}行 (${l.elements.filter(e=>e.type!=='space').length}音符)</span></div>`;
+          const wrap = document.createElement('div'); wrap.className = 'preview-canvas-wrapper';
+          wrap.appendChild(finalCanvas); div.appendChild(wrap); previewContainer.appendChild(div);
+        });
+        const allC = previewContainer.querySelectorAll('canvas');
+        const maxW = Math.max(...Array.from(allC).map(c=>c.width));
+        const scale = Math.min(1, (previewContainer.clientWidth-32)/maxW);
+        allC.forEach(c=>{ c.style.width=c.width*scale+'px'; c.style.height=c.height*scale+'px'; });
+      }
+    }
+
+    function applyRandom() { if(!currentRowLayouts.length)return; randomMap=currentRowLayouts.map(l=>l.elements.map((e,i)=>e.type!=='space'&&Math.random()<0.5)); render(); }
+    function resetView() { invertActive=false; invertToggle.classList.remove('active'); smallifyToggle.checked=false; randomMap=null; mergeViewActive=false; backgroundMergeActive=false; bgMergeToggle.classList.remove('bg-active'); btnMergeView.textContent='📦 合并显示'; render(); }
+    function toggleMergeView() { mergeViewActive=!mergeViewActive; if(mergeViewActive&&backgroundMergeActive){ backgroundMergeActive=false; bgMergeToggle.classList.remove('bg-active'); } btnMergeView.textContent=mergeViewActive?'📋 分行显示':'📦 合并显示'; render(); }
+    function toggleBackgroundMerge() { backgroundMergeActive=!backgroundMergeActive; if(backgroundMergeActive&&mergeViewActive){ mergeViewActive=false; btnMergeView.textContent='📦 合并显示'; } bgMergeToggle.classList.toggle('bg-active',backgroundMergeActive); render(); }
+
+    function updateStyleButtonIcon() {
+      const nextIndex = (currentStyleIndex + 1) % styleSequence.length;
+      const nextStyle = styleSequence[nextIndex];
+      const imgSrc = `img/${nextStyle}/o.png`;
+      const img = document.createElement('img');
+      img.src = imgSrc;
+      img.alt = '样式';
+      img.style.width = '28px'; img.style.height = '28px';
+      img.onerror = () => { btnStyleSwitch.textContent = '🎨'; };
+      btnStyleSwitch.innerHTML = '';
+      btnStyleSwitch.appendChild(img);
+    }
+
+    function switchStyle() {
+      currentStyleIndex=(currentStyleIndex+1)%styleSequence.length;
+      currentStyle=styleSequence[currentStyleIndex];
+      loaded.o=loaded.x=loaded.O=loaded.X=loaded.c=false;
+      updateImageSources(); bindImageEvents(); updateStyleButtonIcon(); render();
+    }
+
+    function toggleTjaMode() {
+  tjaModeActive = !tjaModeActive;
+  btnModeSwitch.textContent = tjaModeActive ? '📝 切换到文本模式' : '📝 切换到TJA模式';
+  if (tjaModeActive) {
+    examplesRow.style.display = 'none';
+    tjaUploadBtn.style.display = 'inline-flex';
+    ignoreScrollToggle.disabled = false;
+    tjaMergeLinesCheckbox.disabled = false;
+    ignoreScrollActive = false;
+    ignoreScrollToggle.checked = false;
+    textarea.value = EMBEDDED_TJA; // 加载内嵌曲谱
+    tjaCourses = parseTJA(textarea.value);
+    updateCourseButtons();
+    selectedCourse = tjaCourses.length ? tjaCourses[0] : null;
+  } else {
+    textarea.value = ''; // ★ 清空输入框，避免 TJA 内容被错误解析为超长图片
+    examplesRow.style.display = 'flex';
+    tjaUploadBtn.style.display = 'none';
+    ignoreScrollToggle.disabled = true;
+    tjaMergeLinesCheckbox.disabled = true;
+    courseContainer.style.display = 'none';
+    selectedCourse = null;
+  }
+  render();
+}
+
+    btnTJAtoText.addEventListener('click', () => {
+      if (!selectedCourse) return;
+      const converted = convertTJAtoText(selectedCourse.rows);
+      textarea.value = converted;
+      tjaModeActive = false;
+      btnModeSwitch.textContent = '📝 切换到TJA模式';
+      examplesRow.style.display = 'flex';
+      tjaUploadBtn.style.display = 'none';
+      ignoreScrollToggle.disabled = true;
+      tjaMergeLinesCheckbox.disabled = true;
+      courseContainer.style.display = 'none';
+      selectedCourse = null;
+      render();
+    });
+
+    tjaFileInput.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        textarea.value = ev.target.result;
+        if (tjaModeActive) {
+          tjaCourses = parseTJA(textarea.value);
+          updateCourseButtons();
+          selectedCourse = tjaCourses.length ? tjaCourses[0] : null;
+        }
+        render();
+      };
+      reader.readAsText(file);
+    });
+
+    textarea.addEventListener('input', () => {
+      if (tjaModeActive) {
+        tjaCourses = parseTJA(textarea.value);
+        updateCourseButtons();
+        selectedCourse = tjaCourses.length ? tjaCourses[0] : null;
+      }
+      render();
+    });
+    hsInput.addEventListener('input', render);
+    smallifyToggle.addEventListener('change', render);
+    tjaMergeLinesCheckbox.addEventListener('change', () => { tjaMergeLinesActive = tjaMergeLinesCheckbox.checked; render(); });
+    ignoreScrollToggle.addEventListener('change', () => {
+      ignoreScrollActive = ignoreScrollToggle.checked;
+      if (tjaModeActive) {
+        const prevCourseName = selectedCourse ? selectedCourse.name : null;
+        tjaCourses = parseTJA(textarea.value);
+        updateCourseButtons();
+        selectedCourse = prevCourseName ? tjaCourses.find(c => c.name === prevCourseName) : (tjaCourses.length ? tjaCourses[0] : null);
+        render();
+      }
+    });
+    btnMergeView.addEventListener('click', toggleMergeView);
+    bgMergeToggle.addEventListener('click', toggleBackgroundMerge);
+    btnResetView.addEventListener('click', resetView);
+    btnStyleSwitch.addEventListener('click', switchStyle);
+    invertToggle.addEventListener('click', ()=>{ invertActive=!invertActive; invertToggle.classList.toggle('active',invertActive); render(); });
+    btnRandom.addEventListener('click', applyRandom);
+    btnModeSwitch.addEventListener('click', toggleTjaMode);
+
+    tjaUploadBtn.style.display = 'none';
+    ignoreScrollToggle.disabled = true;
+    textarea.value = '(ooxooxooxooxooox)ox(ooox)ox(oxooox)';
+    tjaMergeLinesCheckbox.disabled = true;
+    updateStyleButtonIcon();
+    renderExamples();
+    setTimeout(()=>{ render(); }, 400);
+  })();
+</script>
+</body>
+</html>
