@@ -1369,7 +1369,7 @@ SCOREDIFF:180
       }
     });
     btnMergeView.addEventListener('click', toggleMergeView);
-      document.getElementById('btnDownloadImage').addEventListener('click', () => {
+    document.getElementById('btnDownloadImage').addEventListener('click', () => {
     if (!currentRowLayouts.length) return;
 
     const hsVal = parseFloat(hsInput.value);
@@ -1377,7 +1377,6 @@ SCOREDIFF:180
     const doInvert = invertActive;
     const doSmallify = smallifyToggle.checked;
 
-    // 计算画布大小（与合并显示逻辑一致）
     const rowCanvases = currentRowLayouts.map((l, i) => {
         const c = document.createElement('canvas');
         drawLine(c, l, doInvert, doSmallify, randomMap ? randomMap[i] : null);
@@ -1393,7 +1392,6 @@ SCOREDIFF:180
     mergedCanvas.height = Math.ceil(finalHeight);
     const ctx = mergedCanvas.getContext('2d');
 
-    // 如果开启了合并背景，填充底色
     if (backgroundMergeActive) {
         ctx.fillStyle = '#272727';
         ctx.fillRect(0, 0, mergedCanvas.width, mergedCanvas.height);
@@ -1406,15 +1404,15 @@ SCOREDIFF:180
         if (i < currentRowLayouts.length - 1) y += 200;
     });
 
-    // 下载
-    mergedCanvas.toBlob(blob => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'taiko_notes.png';
-        a.click();
-        URL.revokeObjectURL(url);
-    });
+    // 在新页面展示图片
+    const dataURL = mergedCanvas.toDataURL('image/png');
+    const newWindow = window.open('');
+    if (newWindow) {
+        newWindow.document.write(`<img src="${dataURL}" style="max-width:100%; height:auto; background:#272727;" />`);
+        newWindow.document.title = '预览图片 - 太鼓鱼蛋生成器';
+    } else {
+        alert('请允许弹出窗口以查看图片');
+    }
 });
     bgMergeToggle.addEventListener('click', toggleBackgroundMerge);
     btnResetView.addEventListener('click', resetView);
