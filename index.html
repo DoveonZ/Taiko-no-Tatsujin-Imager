@@ -880,65 +880,161 @@ SCOREDIFF:180
 
     function normalize(str) { return str.replace(/（/g,'(').replace(/）/g,')').replace(/【/g,'[').replace(/】/g,']').replace(/｛/g,'{').replace(/｝/g,'}').replace(/，/g,' ').replace(/,/g,' '); }
     function buildCurlyMap(str) {
-      const map = new Map(), stack = [];
-      for (let i=0;i<str.length;i++) {
-        if (str[i]==='{') stack.push(i);
-        else if (str[i]==='}' && stack.length) {
-          const left = stack.pop(); let j=i+1, num='';
-          while (j<str.length && (str[j].match(/[0-9.]/)||str[j]==='.')) { if(str[j]==='\n'){j++;continue;} num+=str[j]; j++; }
-          let y=parseFloat(num); if(isNaN(y)||y<=0) y=16; map.set(left, 16/y);
-        }
-      }
-      return map;
-    }
-   function parseGlobal(input) {
-  const norm = normalize(input), curlyMap = buildCurlyMap(norm);
-  const rows = []; let cur = [], typeS=[], factS=[], pendHigh=false, pendBar=false;
-  for (let i=0;i<norm.length;i++) {
-    const ch=norm[i];
-    if (ch==='\n') { if(cur.length) rows.push(cur); cur=[]; pendHigh=false; pendBar=false; continue; }
-    if (ch==='*') { pendHigh=true; continue; }
-    if (ch==='|' || ch==='/' || ch==='\\') { pendBar=true; continue; }
-    if ('oxOXc '.includes(ch)) {
-      const path=[1,...factS], el={type:ch===' '?'space':ch, pathFactors:path, highlight:false, hasBar:false};
-      if (ch!==' '&&pendHigh) { el.highlight=true; pendHigh=false; }
-      else if (ch===' ') pendHigh=false;
-      if (pendBar && ch!==' ') { el.hasBar = true; pendBar = false; }
-      else if (ch===' ') pendBar = false;
-      cur.push(el);
-    } else if (ch==='(') { typeS.push('('); factS.push(2/3); }
-    else if (ch==='[') { typeS.push('['); factS.push(1/2); }
-    else if (ch==='{') {
-      // 检查大括号内音符数量
-      let j=i+1, noteCount=0;
-      while (j<norm.length && norm[j]!=='}') {
-        if ('oxOXc'.includes(norm[j])) noteCount++;
+  const map = new Map();
+  const stack = [];
+  // 先收集所有 {} 对，并统计内部音符数量
+  const pairs = [];
+  for (let i = 0; i < str.length; i++) {
+    if (str[i] === '{') {
+      stack.push({ left: i, count: 0 });
+    } else if (str[i] === '}' && stack.length > 0) {
+      const info = stack.pop();
+      let j = i + 1;
+      let numStr = '';
+      while (j < str.length && (str[j].match(/[0-9.]/) || str[j] === '.')) {
+        if (str[j] === '\n') { j++; continue; }
+        numStr += str[j];
         j++;
       }
-      if (noteCount===1) {
-        typeS.push('{single');
-      } else {
-        typeS.push('{');
-      }
-      factS.push(curlyMap.has(i)?curlyMap.get(i):1);
-    } else if (')]'.includes(ch)) {
-      const exp=ch===')'?'(':'[';
-      const idx=typeS.lastIndexOf(exp);
-      if(idx!==-1){typeS.splice(idx,1); factS.splice(idx,1);}
-    } else if (ch==='}') {
-      const idxSingle = typeS.lastIndexOf('{single');
-      const idx = typeS.lastIndexOf('{');
-      if (idxSingle !== -1 && (idx === -1 || idxSingle > idx)) {
-        typeS.splice(idxSingle, 1);
-        factS.splice(idxSingle, 1);
-      } else if (idx !== -1) {
-        typeS.splice(idx, 1);
-        factS.splice(idx, 1);
-      }
-    } else { pendHigh=false; pendBar=false; }
+      let y = parseFloat(numStr);
+      if (isNaN(y) || y <= 0) y = 16;
+      info.factor = 16 / y;
+      info.right = i;
+      pairs.push(info);
+    }
   }
-  if (cur.length||!rows.length) rows.push(cur);
-  return rows.filter(r=>r.length);
+  // 统计每对括号内的非空格音符数量
+  for (const pair of pairs) {
+    let noteCount = 0;
+    for (let k = pair.left + 1; k < pair.right; k++) {
+      const ch = str[k];
+      if ('oxOXc'.includes(ch)) noteCount++;
+    }
+    map.set(pair.left, { factor: pair.factor, single: noteCount === 1 });
+  }
+  return map;
+}
+function parseGlobal(input) {
+  const norm = normalize(input);
+  const curlyMap = buildCurlyMap(norm); // 返回 Map<index, {factor, single}>
+  const rows = [];
+  let cur = [];
+  const typeStack = [];
+  const factStack = [];
+  let pendHigh = false;
+  let pendBar = false;
+  let pendingSingleFactor = null;  // 用于单音符花括号的左侧间隔因子
+
+  for (let i = 0; i < norm.length; i++) {
+    const ch = norm[i];
+    // 换行：保存当前行，重置状态
+    if (ch === '\n') {
+      if (cur.length) rows.push(cur);
+      cur = [];
+      pendHigh = false;
+      pendBar = false;
+      pendingSingleFactor = null;
+      continue;
+    }
+
+    // 高亮标记
+    if (ch === '*') {
+      pendHigh = true;
+      continue;
+    }
+
+    // 小节线标记（扩展为 | / \）
+    if (ch === '|' || ch === '/' || ch === '\\') {
+      pendBar = true;
+      continue;
+    }
+
+    // 音符、气球、空格
+    if ('oxOXc '.includes(ch)) {
+      const path = [1, ...factStack];
+      const el = {
+        type: ch === ' ' ? 'space' : ch,
+        pathFactors: path,
+        highlight: false,
+        hasBar: false,
+        leftFactor: null
+      };
+
+      // 高亮处理
+      if (ch !== ' ' && pendHigh) {
+        el.highlight = true;
+        pendHigh = false;
+      } else if (ch === ' ') {
+        pendHigh = false;
+      }
+
+      // 小节线处理（不对空格生效）
+      if (pendBar && ch !== ' ') {
+        el.hasBar = true;
+        pendBar = false;
+      } else if (ch === ' ') {
+        pendBar = false;
+      }
+
+      // 单音符花括号的左侧间隔因子（仅非空格）
+      if (ch !== ' ' && pendingSingleFactor !== null) {
+        el.leftFactor = pendingSingleFactor;
+        pendingSingleFactor = null;
+      } else if (ch === ' ') {
+        pendingSingleFactor = null;  // 空格不应获得间隔因子
+      }
+
+      cur.push(el);
+      continue;
+    }
+
+    // 开括号
+    if (ch === '(') {
+      typeStack.push('(');
+      factStack.push(2 / 3);
+    } else if (ch === '[') {
+      typeStack.push('[');
+      factStack.push(1 / 2);
+    } else if (ch === '{') {
+      const info = curlyMap.has(i) ? curlyMap.get(i) : { factor: 1, single: false };
+      if (info.single) {
+        // 单音符花括号：不压栈，仅记录一个待应用的间隔因子
+        pendingSingleFactor = info.factor;
+      } else {
+        typeStack.push('{');
+        factStack.push(info.factor);
+      }
+    }
+
+    // 闭括号
+    if (ch === ')' || ch === ']' || ch === '}') {
+      if (ch === '}') {
+        // 仅处理压过栈的 '{'（即非单音符花括号）
+        const idx = typeStack.lastIndexOf('{');
+        if (idx !== -1) {
+          typeStack.splice(idx, 1);
+          factStack.splice(idx, 1);
+        }
+        // 对于单音符花括号，没有栈操作，无需处理
+      } else {
+        const expected = ch === ')' ? '(' : '[';
+        const idx = typeStack.lastIndexOf(expected);
+        if (idx !== -1) {
+          typeStack.splice(idx, 1);
+          factStack.splice(idx, 1);
+        }
+      }
+      continue;
+    }
+
+    // 其他字符（如换行等）忽略，但重置高亮和小节线标记
+    pendHigh = false;
+    pendBar = false;
+  }
+
+  // 最后一行的处理
+  if (cur.length) rows.push(cur);
+  return rows.filter(r => r.length > 0);
 }
     function getGapFactor(a, b) {
       const used = new Array(b.length).fill(false);
@@ -956,8 +1052,18 @@ SCOREDIFF:180
     }
     
     function layoutLine(elements, hsScale, baseGapForSpaceRow) {
-      const pos=[]; let x=0;
-      for (let i=0;i<elements.length;i++) { pos.push(x); if(i<elements.length-1) x+=DEFAULT_GAP*getGapFactor(elements[i].pathFactors, elements[i+1].pathFactors)*hsScale; }
+     const pos = []; let x = 0;
+  for (let i = 0; i < elements.length; i++) {
+    pos.push(x);
+    if (i < elements.length - 1) {
+      const nextEl = elements[i + 1];
+      if (nextEl.leftFactor !== null) {
+        x += DEFAULT_GAP * nextEl.leftFactor * hsScale;
+      } else {
+        x += DEFAULT_GAP * getGapFactor(elements[i].pathFactors, elements[i + 1].pathFactors) * hsScale;
+      }
+    }
+  }
       let minX=Infinity,maxX=-Infinity;
       let firstNoteCenterX = IMG_SMALL/2;
       elements.forEach((el,idx)=>{
