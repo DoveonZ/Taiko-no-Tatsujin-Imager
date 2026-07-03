@@ -168,7 +168,7 @@
     <div class="info-bar" id="infoBar"></div>
     <div class="tutorial" id="tutorialBox">
         <span>高亮：<code>*</code> 后首个音符发光</span>
-        <span>小节线：<code>|</code> 后首个音符添加小节线</span>
+        <span>小节线：<code>|</code> <code>/</code> <code>\</code> 后首个音符添加小节线</span>
     </div>
     <div class="legend">
         <span>默认间隔16分</span><span><code>( )</code> ×1.5</span><span><code>[ ]</code> ×2</span><span><code>{ }y</code> y分音</span>
@@ -898,7 +898,7 @@ SCOREDIFF:180
         const ch=norm[i];
         if (ch==='\n') { if(cur.length) rows.push(cur); cur=[]; pendHigh=false; pendBar=false; continue; }
         if (ch==='*') { pendHigh=true; continue; }
-        if (ch==='|') { pendBar=true; continue; }
+        if (ch==='|' || ch==='/' || ch==='\\') { pendBar=true; continue; }
         if ('oxOXc '.includes(ch)) {
           const path=[1,...factS], el={type:ch===' '?'space':ch, pathFactors:path, highlight:false, hasBar:false};
           if (ch!==' '&&pendHigh) { el.highlight=true; pendHigh=false; }
