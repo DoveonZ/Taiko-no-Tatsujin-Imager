@@ -139,7 +139,7 @@
             <button class="btn btn-primary" id="btnDownloadImage">⬇️ 下载图片</button>
         </div>
         <div class="controls-row">
-            <div class="control-item"><label for="hsInput"><strong>HS 倍率</strong></label><input type="number" id="hsInput" value="1.0" step="0.1" min="0.1"></div>
+            <div class="control-item"><label for="hsInput"><strong>HS</strong></label><input type="number" id="hsInput" value="1.0" step="0.1" min="0.1"></div>
             <div class="control-item"><label><input type="checkbox" id="smallifyToggle"> 大音符→小音符</label></div>
             <div class="control-item"><label><input type="checkbox" id="tjaMergeLinesCheckbox" checked> 合并短行</label></div>
             <div class="control-item"><label><input type="checkbox" id="ignoreScrollToggle"> 忽略SCROLL</label></div>
@@ -147,9 +147,9 @@
             <button id="btnRandom" class="icon-btn" title="随机"><img src="img/Icon/Random.png" alt="随机"></button>
             <button id="bgMergeToggle" class="icon-btn" title="合并背景">BG</button>
             <button class="btn" id="btnStyleSwitch" title="切换样式">🎨</button>
-            <button class="btn" id="btnResetView">📄 显示原谱</button>
-            <button class="btn" id="btnModeSwitch">📝 切换到TJA模式</button>
-            <button class="btn" id="btnTJAtoText" style="display:none;">🔄 TJA转文本</button>
+            <button class="btn" id="btnResetView">显示原谱</button>
+            <button class="btn" id="btnModeSwitch">TJA模式</button>
+            <button class="btn" id="btnTJAtoText" style="display:none;">TJA转文本</button>
             <span class="file-upload btn" id="tjaUploadBtn">
                 📂 加载TJA <input type="file" id="tjaFileInput" accept=".tja,.txt">
             </span>
@@ -167,8 +167,8 @@
     </div>
     <div class="info-bar" id="infoBar"></div>
     <div class="tutorial" id="tutorialBox">
-        <span>✏️ 高亮：<code>*</code> 后首个音符发光</span>
-        <span>📏 小节线：<code>|</code> 后首个音符添加小节线</span>
+        <span>高亮：<code>*</code> 后首个音符发光</span>
+        <span>小节线：<code>|</code> 后首个音符添加小节线</span>
     </div>
     <div class="legend">
         <span>默认间隔16分</span><span><code>( )</code> ×1.5</span><span><code>[ ]</code> ×2</span><span><code>{ }y</code> y分音</span>
