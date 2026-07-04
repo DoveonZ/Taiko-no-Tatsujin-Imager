@@ -130,7 +130,7 @@
         .preview-canvas-wrapper { display:flex; justify-content:flex-start; align-items:center; width:100%; overflow:visible; }
         .preview-canvas-wrapper canvas { display:block; border:1px solid var(--preview-border); background:transparent; max-width:none; height:auto; }
         .info-bar { display:flex; gap:16px; flex-wrap:wrap; font-size:0.82rem; color:var(--text-secondary); }
-        .legend, .tutorial { display:flex; flex-wrap:wrap; gap:12px; font-size:0.78rem; color:var(--text-secondary); }
+        .legend, .tutorial { display:flex; flex-wrap:wrap; gap:12px; font-size:0.78rem; color:var(--text-secondary); align-items:center; }
         .legend span, .tutorial span { background:#f8f5f0; padding:4px 10px; border-radius:14px; }
         .legend code, .tutorial code { font-family:var(--font-mono); background:#e8e0d2; padding:2px 6px; border-radius:4px; }
         .file-upload { display:inline-block; position:relative; overflow:hidden; height:var(--ctrl-height); }
@@ -140,6 +140,14 @@
             border-radius:8px; text-align:center; font-size:0.9rem;
         }
         .tja-only { display:none; }
+
+        /* 模态框 */
+        #mapModal {
+            display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+            background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;
+        }
+        #mapTable th, #mapTable td { padding:6px; border-bottom:1px solid var(--border); }
+        #mapTable input { width:100%; border:1px solid var(--border); padding:4px; border-radius:4px; font-family:var(--font-mono); }
         @media (max-width: 768px) {
             .app-container { padding: 16px 12px; }
             .app-header h1 { font-size: 1.5rem; }
@@ -221,9 +229,26 @@
     <div class="legend" id="legendBox">
         <span>默认间隔16分</span><span><code>( )</code> ×1.5</span><span><code>[ ]</code> ×2</span><span><code>{ }y</code> y分音</span>
         <span>空格空音符</span><span>o/x 小音符</span><span>O/X 大音符</span><span>c 气球</span>
-        <span class="chinese-map-hint">口:o 乂:x 吕:oo 爻:xx 右:xo 叶:ox</span>
+        <button class="btn" id="btnEditMap" style="margin-left:auto;">✏️ 编辑映射</button>
     </div>
 </div>
+
+<!-- 映射编辑模态框 -->
+<div id="mapModal">
+    <div style="background:var(--card-bg); padding:20px; border-radius:var(--radius); max-width:600px; width:90%; max-height:80vh; overflow-y:auto; box-shadow:var(--shadow-lg);">
+        <h3 style="margin-bottom:12px;">自定义映射</h3>
+        <table id="mapTable" style="width:100%; border-collapse:collapse;">
+            <thead><tr><th>字符</th><th>音符</th><th></th></tr></thead>
+            <tbody></tbody>
+        </table>
+        <button class="btn" id="btnAddMapRow" style="margin-top:8px;">➕ 添加一行</button>
+        <div style="margin-top:16px; display:flex; gap:8px; justify-content:flex-end;">
+            <button class="btn" id="btnSaveMap">保存并关闭</button>
+            <button class="btn" id="btnCancelMap">取消</button>
+        </div>
+    </div>
+</div>
+
 <script>
   (() => {
     // 获取DOM元素
@@ -257,13 +282,18 @@
     const btnClearBars = document.getElementById('btnClearBars');
     const btnCollapseControls = document.getElementById('btnCollapseControls');
     const controlsRow = document.getElementById('controlsRow');
-    const chineseMapHint = document.querySelector('.chinese-map-hint');
-    const legendBox = document.getElementById('legendBox');  // ★ 新增
+    const legendBox = document.getElementById('legendBox');
+    const btnEditMap = document.getElementById('btnEditMap');
+    const mapModal = document.getElementById('mapModal');
+    const mapTableBody = document.querySelector('#mapTable tbody');
+    const btnAddMapRow = document.getElementById('btnAddMapRow');
+    const btnSaveMap = document.getElementById('btnSaveMap');
+    const btnCancelMap = document.getElementById('btnCancelMap');
 
     // 常量
     const IMG_SMALL = 106, IMG_BIG = 160, IMG_BALLOON_W = 253, IMG_BALLOON_H = 106;
     const DEFAULT_GAP = 90, FIXED_HEIGHT = 200;
-    const MAX_GAP_SUM = 64 * DEFAULT_GAP-1;
+    const MAX_GAP_SUM = 64 * DEFAULT_GAP - 1;
     const styleSequence = [0, 1, 0, 2];
     let currentStyleIndex = 0, currentStyle = styleSequence[currentStyleIndex];
     let examples = [];
@@ -274,8 +304,9 @@
     const loaded = { o: false, x: false, O: false, X: false, c: false };
 
     let chineseNoteMap = {};
+    let userChineseMap = {};
+    const BASIC_NOTES = [' ', 'o', 'x', 'O', 'X', 'c'];
 
-    // 外部TJA加载失败时的备用内容
     const FALLBACK_TJA = `TITLE:Black Rose Apostle
 SUBTITLE:--
 BPM:204
@@ -293,6 +324,7 @@ SCOREDIFF:100
 10201020,
 #END`;
 
+    // 图片加载与样式
     function updateImageSources() {
       const p = 'img/' + currentStyle + '/';
       imgOSmall.src = p+'o.png'; imgXSmall.src = p+'x.png'; imgOBig.src = p+'oo.png'; imgXBig.src = p+'xx.png'; imgC.src = p+'c.png';
@@ -312,7 +344,6 @@ SCOREDIFF:100
       imgC.onload=()=>{ loaded.c=true; checkAllLoaded(); };
       imgC.onerror=()=>{ loaded.c=false; checkAllLoaded(); };
     }
-
     updateImageSources(); bindImageEvents();
 
     let pendingRender = false;
@@ -331,13 +362,14 @@ SCOREDIFF:100
     let hideBars = false;
     let controlsCollapsed = false;
 
-   function replaceChineseNotes(str) {
-    let result = str;
-    for (const [ch, replacement] of Object.entries(chineseNoteMap)) {
-        result = result.replaceAll(ch, replacement);
+    // 工具函数
+    function replaceChineseNotes(str) {
+        let result = str;
+        for (const [ch, replacement] of Object.entries(chineseNoteMap)) {
+            result = result.replaceAll(ch, replacement);
+        }
+        return result;
     }
-    return result;
-}
 
     function normalize(str) { return str.replace(/（/g,'(').replace(/）/g,')').replace(/【/g,'[').replace(/】/g,']').replace(/｛/g,'{').replace(/｝/g,'}').replace(/，/g,' ').replace(/,/g,' '); }
 
@@ -414,55 +446,7 @@ SCOREDIFF:100
         }
         return rows.filter(r => r.length > 0);
     }
-async function loadChineseMap() {
-    try {
-        const response = await fetch('map.txt');
-        if (!response.ok) throw new Error('Network error');
-        const text = await response.text();
-        chineseNoteMap = parseChineseMap(text);
-    } catch (e) {
-        console.warn('加载汉字映射失败，使用内置回退', e);
-        chineseNoteMap = getFallbackChineseMap();
-    }
-}
 
-function parseChineseMap(text) {
-    const map = {};
-    const lines = text.split('\n');
-    let currentTarget = null;
-    for (let line of lines) {
-        line = line.trim();
-        if (line.startsWith('#')) {
-            currentTarget = line.substring(1).trim();
-        } else if (line && currentTarget) {
-            // 按制表符或连续空格拆分
-            const chars = line.split(/[ \t]+/);
-            for (const ch of chars) {
-                if (ch) map[ch] = currentTarget;
-            }
-        }
-    }
-    return map;
-}
-
-function getFallbackChineseMap() {
-    return {
-        '咚': 'o', 'd': 'o', '口': 'o', '阳': 'o',
-        '咔': 'x', 'k': 'x', '乂': 'x', '阴': 'x',
-        '外': 'ox', '叶': 'ox', '少阴': 'ox',
-        '内': 'xo', '右': 'xo', '少阳': 'xo',
-        '吕': 'oo', '太阳': 'oo',
-        '爻': 'xx', '太阴': 'xx',
-        '乾': 'ooo', '天': 'ooo',
-        '坤': 'xxx', '地': 'xxx',
-        '巽': 'xoo', '风': 'xoo',
-        '坎': 'xox', '水': 'xox',
-        '艮': 'xxo', '山': 'xxo',
-        '兑': 'oox', '泽': 'oox',
-        '离': 'oxo', '火': 'oxo',
-        '震': 'oxx', '雷': 'oxx',
-    };
-}
     function layoutLine(elements, hsScale, baseGapForSpaceRow) {
         const pos = []; let x = 0;
         for (let i = 0; i < elements.length; i++) {
@@ -500,10 +484,9 @@ function getFallbackChineseMap() {
         const ctx = canvas.getContext('2d');
         canvas.width = Math.ceil(layout.width); canvas.height = FIXED_HEIGHT;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-       for (let i = 0; i < layout.elements.length; i++) {
-    const el = layout.elements[i];
-    if (!el.hasBar || hideBarLines) continue;
-    // 绘制小节线...
+        for (let i = 0; i < layout.elements.length; i++) {
+            const el = layout.elements[i];
+            if (!el.hasBar || hideBarLines) continue;
             const centerX = layout.positions[i] + IMG_SMALL/2 - layout.minX;
             if (barImage.complete && barImage.naturalWidth > 0) {
                 const bw = barImage.naturalWidth || 5, bh = barImage.naturalHeight || 200;
@@ -608,14 +591,14 @@ function getFallbackChineseMap() {
     }
 
     function convertTJAtoText(courseRows) {
-    return courseRows.map(row => {
-        const notes = row.elements.map(el => el.type === 'space' ? ' ' : el.type).join('');
-        const y = row.baseGap > 0 ? 1440 / row.baseGap : 16;
-        if (Math.abs(y - 16) < 0.001) return notes;
-        const yStr = Number.isInteger(y) ? y.toString() : y.toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
-        return `{${notes}}${yStr}`;
-    }).join('\n');
-}
+        return courseRows.map(row => {
+            const notes = row.elements.map(el => el.type === 'space' ? ' ' : el.type).join('');
+            const y = row.baseGap > 0 ? 1440 / row.baseGap : 16;
+            if (Math.abs(y - 16) < 0.001) return notes;
+            const yStr = Number.isInteger(y) ? y.toString() : y.toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
+            return `{${notes}}${yStr}`;
+        }).join('\n');
+    }
 
     function mergeTJARows(rows, hsScale) {
         const layouts = [];
@@ -691,16 +674,15 @@ function getFallbackChineseMap() {
         if (tjaModeActive) {
             tjaUploadBtn.style.display = 'inline-flex';
             btnClearBars.style.display = 'none';
-            if (chineseMapHint) chineseMapHint.style.display = 'none';
         } else {
             tjaUploadBtn.style.display = 'none';
             btnClearBars.style.display = 'inline-flex';
-            if (chineseMapHint) chineseMapHint.style.display = '';
         }
         btnMergeLines.classList.toggle('active', tjaMergeLinesActive);
         btnIgnoreScroll.classList.toggle('active', ignoreScrollActive);
         legendBox.style.display = tjaModeActive ? 'none' : '';
         btnTJAtoText.style.display = tjaModeActive ? 'inline-flex' : 'none';
+        if (btnEditMap) btnEditMap.style.display = tjaModeActive ? 'none' : ''; // ox模式下才显示映射编辑
     }
 
     let currentRowLayouts = [];
@@ -709,7 +691,6 @@ function getFallbackChineseMap() {
         let rowLayouts;
         const hsVal = parseFloat(hsInput.value); const hsScale = isNaN(hsVal) || hsVal <= 0 ? 1 : hsVal;
         const doInvert = invertActive, doSmallify = smallifyActive;
-        btnTJAtoText.style.display = tjaModeActive ? 'inline-flex' : 'none';
         tutorialBox.style.display = tjaModeActive ? 'none' : 'flex';
         divergenceWarning.style.display = tjaModeActive ? 'block' : 'none';
         if (tjaModeActive && selectedCourse) {
@@ -740,7 +721,7 @@ function getFallbackChineseMap() {
             let y = 100;
             rowLayouts.forEach((l,i) => { ctx.drawImage(rowCanvases[i].canvas, maxFirstX - rowCanvases[i].firstX, y-100); if (i < rowLayouts.length-1) y += 200; });
             const div = document.createElement('div'); div.className = 'preview-row';
-            div.innerHTML = `<div class="preview-row-header"><span>${backgroundMergeActive ? '🎨 合并背景' : '📦 合并显示'} (${rowLayouts.length}行)</span></div>`;
+            div.innerHTML = `<div class="preview-row-header"><span>${backgroundMergeActive ? '合并背景' : '合并多行'} (${rowLayouts.length}行)</span></div>`;
             const wrap = document.createElement('div'); wrap.className = 'preview-canvas-wrapper'; wrap.appendChild(merged); div.appendChild(wrap);
             previewContainer.appendChild(div);
             const scale = Math.min(1, (previewContainer.clientWidth-32) / maxWidth);
@@ -753,7 +734,7 @@ function getFallbackChineseMap() {
                 const final = document.createElement('canvas'); final.width = Math.ceil(extra + l.width); final.height = FIXED_HEIGHT;
                 final.getContext('2d').drawImage(orig, extra, 0);
                 const div = document.createElement('div'); div.className = 'preview-row';
-                div.innerHTML = `<div class="preview-row-header"><span>🎵 第${i+1}行 (${l.elements.filter(e=>e.type!=='space').length}音符)</span></div>`;
+                div.innerHTML = `<div class="preview-row-header"><span>第${i+1}行 (${l.elements.filter(e=>e.type!=='space').length}音符)</span></div>`;
                 const wrap = document.createElement('div'); wrap.className = 'preview-canvas-wrapper'; wrap.appendChild(final); div.appendChild(wrap);
                 previewContainer.appendChild(div);
             });
@@ -764,6 +745,116 @@ function getFallbackChineseMap() {
         }
     }
 
+    // 汉字映射管理
+    function loadUserMap() {
+        try {
+            const data = localStorage.getItem('taikoUserMap');
+            if (data) userChineseMap = JSON.parse(data);
+            else userChineseMap = {};
+        } catch (e) { userChineseMap = {}; }
+    }
+
+    function saveUserMap(map) {
+        localStorage.setItem('taikoUserMap', JSON.stringify(map));
+        userChineseMap = map;
+        Object.assign(chineseNoteMap, userChineseMap);
+    }
+
+    async function loadChineseMap() {
+        try {
+            const response = await fetch('map.txt');
+            if (response.ok) {
+                const text = await response.text();
+                chineseNoteMap = parseChineseMap(text);
+            } else {
+                chineseNoteMap = getFallbackChineseMap();
+            }
+        } catch (e) {
+            chineseNoteMap = getFallbackChineseMap();
+        }
+        loadUserMap();
+        Object.assign(chineseNoteMap, userChineseMap);
+    }
+
+    function parseChineseMap(text) {
+        const map = {};
+        const lines = text.split('\n');
+        let currentTarget = null;
+        for (let line of lines) {
+            line = line.trim();
+            if (line.startsWith('#')) {
+                currentTarget = line.substring(1).trim();
+            } else if (line && currentTarget) {
+                const chars = line.split(/[ \t]+/);
+                for (const ch of chars) {
+                    if (ch) map[ch] = currentTarget;
+                }
+            }
+        }
+        return map;
+    }
+
+    function getFallbackChineseMap() {
+        return {
+            '咚': 'o', 'd': 'o', '口': 'o', '阳': 'o',
+            '咔': 'x', 'k': 'x', '乂': 'x', '阴': 'x',
+            '外': 'ox', '叶': 'ox', '少阴': 'ox',
+            '内': 'xo', '右': 'xo', '少阳': 'xo',
+            '吕': 'oo', '太阳': 'oo',
+            '爻': 'xx', '太阴': 'xx',
+            '乾': 'ooo', '天': 'ooo',
+            '坤': 'xxx', '地': 'xxx',
+            '巽': 'xoo', '风': 'xoo',
+            '坎': 'xox', '水': 'xox',
+            '艮': 'xxo', '山': 'xxo',
+            '兑': 'oox', '泽': 'oox',
+            '离': 'oxo', '火': 'oxo',
+            '震': 'oxx', '雷': 'oxx',
+            '井': 'xxxx'
+        };
+    }
+
+    function openMapEditor() {
+        mapTableBody.innerHTML = '';
+        const entries = Object.entries(chineseNoteMap).filter(([key, val]) => !BASIC_NOTES.includes(val) && key.length > 0);
+        for (const [ch, note] of entries) {
+            addMapRow(ch, note);
+        }
+        mapModal.style.display = 'flex';
+    }
+
+    function addMapRow(ch = '', note = '') {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><input type="text" class="map-char" value="${escapeHtml(ch)}" placeholder="字符"></td>
+            <td><input type="text" class="map-note" value="${escapeHtml(note)}" placeholder="如 o, ox"></td>
+            <td><button class="btn btn-delete-row" style="padding:2px 8px;">🗑️</button></td>
+        `;
+        tr.querySelector('.btn-delete-row').addEventListener('click', () => tr.remove());
+        mapTableBody.appendChild(tr);
+    }
+
+    function escapeHtml(str) { return String(str).replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[m]); }
+
+    btnEditMap.addEventListener('click', openMapEditor);
+    btnAddMapRow.addEventListener('click', () => addMapRow());
+    btnSaveMap.addEventListener('click', () => {
+        const rows = document.querySelectorAll('#mapTable tbody tr');
+        const newMap = {};
+        for (const row of rows) {
+            const charInput = row.querySelector('.map-char');
+            const noteInput = row.querySelector('.map-note');
+            const ch = charInput.value.trim();
+            const note = noteInput.value.trim();
+            if (ch && note) newMap[ch] = note;
+        }
+        saveUserMap(newMap);
+        mapModal.style.display = 'none';
+        render();
+    });
+    btnCancelMap.addEventListener('click', () => { mapModal.style.display = 'none'; });
+
+    // 示例加载等
     async function loadExamples() {
         try {
             const response = await fetch('example/example.txt');
@@ -821,25 +912,25 @@ function getFallbackChineseMap() {
     }
 
     function exitTJAMode(clearText = true) {
-    tjaModeActive = false;
-    btnModeSwitch.textContent = '切换到TJA模式';
-    updateTjaModeUI();
-    if (clearText) textarea.value = '';      // 只有明确要求清空时才清空
-    courseContainer.style.display = 'none';
-    selectedCourse = null;
-    render();
-}
+        tjaModeActive = false;
+        btnModeSwitch.textContent = '切换到TJA模式';
+        updateTjaModeUI();
+        if (clearText) textarea.value = '';
+        courseContainer.style.display = 'none';
+        selectedCourse = null;
+        render();
+    }
 
     btnModeSwitch.addEventListener('click', () => {
-    if (tjaModeActive) exitTJAMode(true);   // 手动切换时清空
-    else enterTJAMode();
-});
+        if (tjaModeActive) exitTJAMode(true);
+        else enterTJAMode();
+    });
 
-   btnTJAtoText.addEventListener('click', () => {
-    if (!selectedCourse) return;
-    textarea.value = convertTJAtoText(selectedCourse.rows);
-    exitTJAMode(false);   // 不清空文本
-});
+    btnTJAtoText.addEventListener('click', () => {
+        if (!selectedCourse) return;
+        textarea.value = convertTJAtoText(selectedCourse.rows);
+        exitTJAMode(false);
+    });
 
     tjaFileInput.addEventListener('change', function(e) {
         const file = e.target.files[0];
@@ -956,7 +1047,6 @@ function getFallbackChineseMap() {
             infoBar.style.display = '';
             tutorialBox.style.display = tjaModeActive ? 'none' : 'flex';
             legendBox.style.display = tjaModeActive ? 'none' : '';
-            if (chineseMapHint) chineseMapHint.style.display = tjaModeActive ? 'none' : '';
             divergenceWarning.style.display = tjaModeActive ? 'block' : 'none';
             btnCollapseControls.textContent = '收起功能区';
         }
@@ -1038,16 +1128,14 @@ function getFallbackChineseMap() {
     // 初始化
     updateStyleButtonIcon();
     async function initialize() {
-    await loadChineseMap();
-    await loadExamples();
-    
-    updateStyleButtonIcon();
-    updateTjaModeUI();
-    textarea.value = '(ooxooxooxooxooox)ox(ooox)ox(oxooox)';
-    textarea.setAttribute('wrap', 'off');
-    render();
-}
-initialize();
+        await loadChineseMap();
+        await loadExamples();
+        updateTjaModeUI();
+        textarea.value = '(ooxooxooxooxooox)ox(ooox)ox(oxooox)';
+        textarea.setAttribute('wrap', 'off');
+        render();
+    }
+    initialize();
   })();
 </script>
 </body>
