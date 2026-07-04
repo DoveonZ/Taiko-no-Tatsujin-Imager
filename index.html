@@ -562,7 +562,7 @@ SCOREDIFF:100
                     title: globalTitle,
                     level: globalLevel
                 };
-            inStart = false; b = 1; a = 1; buffer = '';
+                inStart = false; b = 1; a = 1; buffer = '';
             } else if (line === '#START') { flushBuffer(); inStart = true; }
             else if (line === '#END') { flushBuffer(); inStart = false; }
             else if (inStart && currentCourse) {
@@ -697,7 +697,7 @@ SCOREDIFF:100
         btnIgnoreScroll.classList.toggle('active', ignoreScrollActive);
         legendBox.style.display = tjaModeActive ? 'none' : '';
         btnTJAtoText.style.display = tjaModeActive ? 'inline-flex' : 'none';
-        if (btnEditMap) btnEditMap.style.display = tjaModeActive ? 'none' : ''; // ox模式下才显示映射编辑
+        if (btnEditMap) btnEditMap.style.display = tjaModeActive ? 'none' : '';
     }
 
     let currentRowLayouts = [];
@@ -729,26 +729,25 @@ SCOREDIFF:100
             const rowCanvases = rowLayouts.map((l,i) => { const c = document.createElement('canvas'); drawLine(c, l, doInvert, doSmallify, randomMap?.[i], hideBars); return { canvas: c, firstX: l.firstNoteCanvasX, firstY: 100 }; });
             const maxFirstX = Math.max(...rowCanvases.map(r => r.firstX));
             const infoHeight = tjaModeActive && selectedCourse ? FIXED_HEIGHT : 0;
-            const musicStartY = infoHeight; // 音符行起始 Y
+            const musicStartY = infoHeight;
             const finalHeight = musicStartY + 100 + (rowLayouts.length-1)*200 + 100;
             const maxWidth = Math.max(...rowCanvases.map((r,i) => (maxFirstX - r.firstX) + r.canvas.width));
             const merged = document.createElement('canvas'); merged.width = Math.ceil(maxWidth); merged.height = Math.ceil(finalHeight);
             const ctx = merged.getContext('2d');
             if (backgroundMergeActive) { ctx.fillStyle = '#272727'; ctx.fillRect(0,0,merged.width,merged.height); }
+
+            // 绘制信息行
             if (tjaModeActive && selectedCourse) {
                 const title = selectedCourse.title || '';
                 const difficulty = selectedCourse.name || '';
                 const level = selectedCourse.level || '';
                 const infoText = difficulty + (level ? level : '');
-                
                 ctx.save();
                 ctx.font = 'bold 30px "DFPKanteiryu", "KaiTi", sans-serif';
                 ctx.fillStyle = '#e0d5c5';
                 ctx.shadowColor = 'rgba(0,0,0,0.8)';
                 ctx.shadowBlur = 4;
-                // 绘制标题（左上角）
                 ctx.fillText(title, 12, 40);
-                // 绘制难度星级（标题下方）
                 if (infoText) {
                     ctx.font = 'bold 24px "DFPKanteiryu", "KaiTi", sans-serif';
                     ctx.fillText(infoText, 12, 40 + 36);
@@ -757,20 +756,13 @@ SCOREDIFF:100
                 ctx.shadowBlur = 0;
                 ctx.restore();
             }
+
             let y = musicStartY;
             rowLayouts.forEach((l,i) => {
                 ctx.drawImage(rowCanvases[i].canvas, maxFirstX - rowCanvases[i].firstX, y - 100);
                 if (i < rowLayouts.length - 1) y += 200;
             });
-            if (tjaModeActive && selectedCourse && selectedCourse.title) {
-                ctx.font = 'bold 28px "DFPKanteiryu", "KaiTi", sans-serif';
-                ctx.fillStyle = '#e0d5c5';   // 与预览文字颜色一致
-                ctx.shadowColor = 'rgba(0,0,0,0.8)';
-                ctx.shadowBlur = 4;
-                ctx.fillText(selectedCourse.title, 12, 12);
-                ctx.shadowColor = 'transparent';
-                ctx.shadowBlur = 0;
-            }
+
             const div = document.createElement('div'); div.className = 'preview-row';
             div.innerHTML = `<div class="preview-row-header"><span>${backgroundMergeActive ? '合并背景' : '合并多行'} (${rowLayouts.length}行)</span></div>`;
             const wrap = document.createElement('div'); wrap.className = 'preview-canvas-wrapper'; wrap.appendChild(merged); div.appendChild(wrap);
@@ -1113,16 +1105,13 @@ SCOREDIFF:100
             return { canvas: c, firstX: l.firstNoteCanvasX, firstY: 100 };
         });
         const maxFirstX = Math.max(...rowCanvases.map(r => r.firstX));
-        const finalHeight = 100 + (currentRowLayouts.length-1)*200 + 100;
         const maxWidth = Math.max(...rowCanvases.map((r,i) => (maxFirstX - r.firstX) + r.canvas.width));
-        
         const infoHeight = tjaModeActive && selectedCourse ? FIXED_HEIGHT : 0;
         const finalHeight = infoHeight + 100 + (currentRowLayouts.length-1)*200 + 100;
-        const mergedCanvas = document.createElement('canvas');
-        mergedCanvas.width = Math.ceil(maxWidth);
-        mergedCanvas.height = Math.ceil(finalHeight);
+        const mergedCanvas = document.createElement('canvas'); mergedCanvas.width = Math.ceil(maxWidth); mergedCanvas.height = Math.ceil(finalHeight);
         const ctx = mergedCanvas.getContext('2d');
         if (backgroundMergeActive) { ctx.fillStyle = '#272727'; ctx.fillRect(0,0,mergedCanvas.width,mergedCanvas.height); }
+
         if (tjaModeActive && selectedCourse) {
             const title = selectedCourse.title || '';
             const difficulty = selectedCourse.name || '';
@@ -1142,7 +1131,7 @@ SCOREDIFF:100
             ctx.shadowBlur = 0;
             ctx.restore();
         }
-        
+
         let y = infoHeight;
         currentRowLayouts.forEach((l,i) => {
             ctx.drawImage(rowCanvases[i].canvas, maxFirstX - rowCanvases[i].firstX, y - 100);
