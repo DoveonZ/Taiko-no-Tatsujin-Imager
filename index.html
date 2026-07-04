@@ -528,7 +528,8 @@ SCOREDIFF:100
         const courses = [];
         const lines = text.split('\n');
         let currentCourse = null, inStart = false, b = 1, a = 1, buffer = '';
-        let globalTitle = '';   // ★ 新增
+        let globalTitle = '';
+        let globalLevel = '';
         const mapDigit = { '0':' ', '1':'o', '2':'x', '3':'O', '4':'X', '7':'c' };
         const flushBuffer = () => {
             if (!buffer) return;
@@ -545,6 +546,10 @@ SCOREDIFF:100
                 globalTitle = line.replace('TITLE:', '').trim();
                 continue;
             }
+            if (line.startsWith('LEVEL:')) {
+                globalLevel = line.replace('LEVEL:', '').trim();
+                continue;
+            }
             line = line.trim();
             const ci = line.indexOf('//'); if (ci !== -1) line = line.substring(0, ci).trim();
             if (!line) continue;
@@ -554,7 +559,8 @@ SCOREDIFF:100
                 currentCourse = { 
                     name: line.replace('COURSE:', '').trim(), 
                     rows: [], 
-                    title: globalTitle   // ★ 记录 TITLE
+                    title: globalTitle,
+                    level: globalLevel
                 };
             inStart = false; b = 1; a = 1; buffer = '';
             } else if (line === '#START') { flushBuffer(); inStart = true; }
@@ -722,13 +728,40 @@ SCOREDIFF:100
         if (mergeViewActive || backgroundMergeActive) {
             const rowCanvases = rowLayouts.map((l,i) => { const c = document.createElement('canvas'); drawLine(c, l, doInvert, doSmallify, randomMap?.[i], hideBars); return { canvas: c, firstX: l.firstNoteCanvasX, firstY: 100 }; });
             const maxFirstX = Math.max(...rowCanvases.map(r => r.firstX));
-            const finalHeight = 100 + (rowLayouts.length-1)*200 + 100;
+            const infoHeight = tjaModeActive && selectedCourse ? FIXED_HEIGHT : 0;
+            const musicStartY = infoHeight; // 音符行起始 Y
+            const finalHeight = musicStartY + 100 + (rowLayouts.length-1)*200 + 100;
             const maxWidth = Math.max(...rowCanvases.map((r,i) => (maxFirstX - r.firstX) + r.canvas.width));
             const merged = document.createElement('canvas'); merged.width = Math.ceil(maxWidth); merged.height = Math.ceil(finalHeight);
             const ctx = merged.getContext('2d');
             if (backgroundMergeActive) { ctx.fillStyle = '#272727'; ctx.fillRect(0,0,merged.width,merged.height); }
-            let y = 100;
-            rowLayouts.forEach((l,i) => { ctx.drawImage(rowCanvases[i].canvas, maxFirstX - rowCanvases[i].firstX, y-100); if (i < rowLayouts.length-1) y += 200; });
+            if (tjaModeActive && selectedCourse) {
+                const title = selectedCourse.title || '';
+                const difficulty = selectedCourse.name || '';
+                const level = selectedCourse.level || '';
+                const infoText = difficulty + (level ? level : '');
+                
+                ctx.save();
+                ctx.font = 'bold 30px "DFPKanteiryu", "KaiTi", sans-serif';
+                ctx.fillStyle = '#e0d5c5';
+                ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                ctx.shadowBlur = 4;
+                // 绘制标题（左上角）
+                ctx.fillText(title, 12, 40);
+                // 绘制难度星级（标题下方）
+                if (infoText) {
+                    ctx.font = 'bold 24px "DFPKanteiryu", "KaiTi", sans-serif';
+                    ctx.fillText(infoText, 12, 40 + 36);
+                }
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+                ctx.restore();
+            }
+            let y = musicStartY;
+            rowLayouts.forEach((l,i) => {
+                ctx.drawImage(rowCanvases[i].canvas, maxFirstX - rowCanvases[i].firstX, y - 100);
+                if (i < rowLayouts.length - 1) y += 200;
+            });
             if (tjaModeActive && selectedCourse && selectedCourse.title) {
                 ctx.font = 'bold 28px "DFPKanteiryu", "KaiTi", sans-serif';
                 ctx.fillStyle = '#e0d5c5';   // 与预览文字颜色一致
@@ -1082,11 +1115,39 @@ SCOREDIFF:100
         const maxFirstX = Math.max(...rowCanvases.map(r => r.firstX));
         const finalHeight = 100 + (currentRowLayouts.length-1)*200 + 100;
         const maxWidth = Math.max(...rowCanvases.map((r,i) => (maxFirstX - r.firstX) + r.canvas.width));
-        const mergedCanvas = document.createElement('canvas'); mergedCanvas.width = Math.ceil(maxWidth); mergedCanvas.height = Math.ceil(finalHeight);
+        
+        const infoHeight = tjaModeActive && selectedCourse ? FIXED_HEIGHT : 0;
+        const finalHeight = infoHeight + 100 + (currentRowLayouts.length-1)*200 + 100;
+        const mergedCanvas = document.createElement('canvas');
+        mergedCanvas.width = Math.ceil(maxWidth);
+        mergedCanvas.height = Math.ceil(finalHeight);
         const ctx = mergedCanvas.getContext('2d');
         if (backgroundMergeActive) { ctx.fillStyle = '#272727'; ctx.fillRect(0,0,mergedCanvas.width,mergedCanvas.height); }
-        let y = 100;
-        currentRowLayouts.forEach((l,i) => { ctx.drawImage(rowCanvases[i].canvas, maxFirstX - rowCanvases[i].firstX, y-100); if (i < currentRowLayouts.length-1) y += 200; });
+        if (tjaModeActive && selectedCourse) {
+            const title = selectedCourse.title || '';
+            const difficulty = selectedCourse.name || '';
+            const level = selectedCourse.level || '';
+            const infoText = difficulty + (level ? level : '');
+            ctx.save();
+            ctx.font = 'bold 30px "DFPKanteiryu", "KaiTi", sans-serif';
+            ctx.fillStyle = '#e0d5c5';
+            ctx.shadowColor = 'rgba(0,0,0,0.8)';
+            ctx.shadowBlur = 4;
+            ctx.fillText(title, 12, 40);
+            if (infoText) {
+                ctx.font = 'bold 24px "DFPKanteiryu", "KaiTi", sans-serif';
+                ctx.fillText(infoText, 12, 40 + 36);
+            }
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            ctx.restore();
+        }
+        
+        let y = infoHeight;
+        currentRowLayouts.forEach((l,i) => {
+            ctx.drawImage(rowCanvases[i].canvas, maxFirstX - rowCanvases[i].firstX, y - 100);
+            if (i < currentRowLayouts.length - 1) y += 200;
+        });
         const dataURL = mergedCanvas.toDataURL('image/png');
         const newWindow = window.open('');
         if (newWindow) {
