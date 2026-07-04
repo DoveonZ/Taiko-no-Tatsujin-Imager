@@ -20,6 +20,13 @@ ooo ooo ooo xxx ooo ooo ooo xxx
 {xooxo[oox]oxooxox[oox]oxooxoxo}12
 (x   o x   o xxxxxxo o o x xxoox o xxx ooxxo   o)
 
+#里萤火虫
+|O x oox ooOxOxO |o x oox ooXoXoX |o xooox ooxoo x |OoxxOoxxOoooXxxx
+|O xooox ooOxOxO |o x oox ooXoXoX |O O X X OxxxO O |  XxX O O (ooox)
+|x   O x ooOxOxO |o x oxx ooXoXoX |o xooxx oxxoo x |OxxxOxxxOoooXxxx
+|O xooxx ooOxOxO |O xooxx ooXoXoX |OoXxOoXxOoXxOoXx|O   o   x   x
+          hs1.34↓
+
 #里operate me
 {|OooXxxOooXoo|XxxOooXxxOxx
 |OooXxxOooXoo|XxxOooXxxOxx
