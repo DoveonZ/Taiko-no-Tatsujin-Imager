@@ -56,3 +56,9 @@ ooxxooxxooxxooxxooxxoxoxooxxoxox(ooox)x(ooox)x(ooox)x(ooox)x
 {|oooxxxo oooxxxo oooxxxo o x oxxxoooxxxo oooxxxo oxxxoxxx{|o}28[xxx]xx [xxx]xxo [xxxxxxx]xxxxox[xxx]xxxxxx{o}20 ooo o oo oo | }28
 {|oooxxxo oooxxxo oooxxxo o x {o}28o[ooooo]o[ooo]ooo[xxx]x[xx]x[xx]xx{|o}20   xox x  ox   xo  o  o    xo     ox   o o ooo o  oo o oo  {o}40  xx xx xx xx xx xx | }42
 {|oooxxxo oooxxxo oooxxxo o x {o}28 o ooooo oo oo ooooo xxx    x xxxx xxxx{|o}40  ox x xo  x o x   o   o o xo    o x o o o ooo o  oo o ooo {o}40  xx xx xx xx xx xx | }42
+
+#里Blazing Vortex
+(\乾坤阴) 少阳少阴太阳太阴太阴\少阴太阳少阳太阴少阴太阳太阴太阴\太阳太阳太阴太阳少阴太阳太阴太阴\少阴太阳少阳太阴少阴太阳太阴太阴
+\太阳太阳太阴太阳少阴太阳太阴太阴\少阴太阳少阳太阴少阴太阳太阴太阴\太阳太阳太阴太阳少阴太阳太阴太阴\少阴太阳少阳太阴少阴太阳太阴太阴
+\太阳太阳太阴太阳少阴太阳太阴太阴\少阴太阳少阳太阴少阴太阳太阴太阴\太阳太阳太阴太阳少阴太阳太阴太阴\少阴太阳少阳太阴少阴太阳太阴太阴
+\太阳太阳太阴太阳少阴太阳太阴太阴\少阴太阳少阳太阴少阴太阳太阴太阴\太阳太阳太阴太阳少阴太阳太阴阴 \太阴太阴太阳太阳太阴太阴阳
