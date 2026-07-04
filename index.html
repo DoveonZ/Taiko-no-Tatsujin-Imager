@@ -140,8 +140,6 @@
             border-radius:8px; text-align:center; font-size:0.9rem;
         }
         .tja-only { display:none; }
-
-        /* 模态框 */
         #mapModal {
             display:none; position:fixed; top:0; left:0; width:100%; height:100%;
             background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;
@@ -216,7 +214,7 @@
     <div id="divergenceWarning" style="display:none;">暂不支持谱面分歧</div>
     <div class="preview-outer" id="previewContainer">
         <div class="preview-checkboxes">
-            <label><input type="checkbox" id="mergeViewCheckbox"> 多行合并</label>
+            <label><input type="checkbox" id="mergeViewCheckbox" checked> 多行合并</label>
             <label><input type="checkbox" id="bgMergeCheckbox"> 合并背景</label>
         </div>
         <div style="text-align:center;color:var(--preview-text);padding:30px;" id="placeholder">🎼 输入音符字符串开始预览</div>
@@ -233,7 +231,6 @@
     </div>
 </div>
 
-<!-- 映射编辑模态框 -->
 <div id="mapModal">
     <div style="background:var(--card-bg); padding:20px; border-radius:var(--radius); max-width:600px; width:90%; max-height:80vh; overflow-y:auto; box-shadow:var(--shadow-lg);">
         <h3 style="margin-bottom:12px;">自定义映射</h3>
@@ -251,7 +248,6 @@
 
 <script>
   (() => {
-    // 获取DOM元素
     const textarea = document.getElementById('inputString');
     const previewContainer = document.getElementById('previewContainer');
     const placeholder = document.getElementById('placeholder');
@@ -290,7 +286,6 @@
     const btnSaveMap = document.getElementById('btnSaveMap');
     const btnCancelMap = document.getElementById('btnCancelMap');
 
-    // 常量
     const IMG_SMALL = 106, IMG_BIG = 160, IMG_BALLOON_W = 253, IMG_BALLOON_H = 106;
     const DEFAULT_GAP = 90, FIXED_HEIGHT = 200;
     const MAX_GAP_SUM = 64 * DEFAULT_GAP - 1;
@@ -298,7 +293,6 @@
     let currentStyleIndex = 0, currentStyle = styleSequence[currentStyleIndex];
     let examples = [];
 
-    // 图片对象
     const imgOSmall = new Image(), imgXSmall = new Image(), imgOBig = new Image(), imgXBig = new Image(), imgC = new Image();
     const barImage = new Image(); barImage.src = 'img/bar.png';
     const loaded = { o: false, x: false, O: false, X: false, c: false };
@@ -324,7 +318,6 @@ SCOREDIFF:100
 10201020,
 #END`;
 
-    // 图片加载与样式
     function updateImageSources() {
       const p = 'img/' + currentStyle + '/';
       imgOSmall.src = p+'o.png'; imgXSmall.src = p+'x.png'; imgOBig.src = p+'oo.png'; imgXBig.src = p+'xx.png'; imgC.src = p+'c.png';
@@ -353,7 +346,6 @@ SCOREDIFF:100
       requestAnimationFrame(() => { pendingRender = false; render(); });
     }
 
-    // 状态变量
     let randomMap = null, invertActive = false, mergeViewActive = true, backgroundMergeActive = false;
     let smallifyActive = false;
     let tjaModeActive = false, tjaCourses = [], selectedCourse = null;
@@ -362,7 +354,6 @@ SCOREDIFF:100
     let hideBars = false;
     let controlsCollapsed = false;
 
-    // 工具函数
     function replaceChineseNotes(str) {
         let result = str;
         for (const [ch, replacement] of Object.entries(chineseNoteMap)) {
@@ -529,7 +520,7 @@ SCOREDIFF:100
         const lines = text.split('\n');
         let currentCourse = null, inStart = false, b = 1, a = 1, buffer = '';
         let globalTitle = '';
-        let globalLevel = '';
+        let currentLevel = '';
         const mapDigit = { '0':' ', '1':'o', '2':'x', '3':'O', '4':'X', '7':'c' };
         const flushBuffer = () => {
             if (!buffer) return;
@@ -546,22 +537,15 @@ SCOREDIFF:100
                 globalTitle = line.replace('TITLE:', '').trim();
                 continue;
             }
-            if (line.startsWith('LEVEL:')) {
-                globalLevel = line.replace('LEVEL:', '').trim();
-                continue;
-            }
             line = line.trim();
             const ci = line.indexOf('//'); if (ci !== -1) line = line.substring(0, ci).trim();
             if (!line) continue;
             if (line.startsWith('COURSE:')) {
                 flushBuffer();
                 if (currentCourse && currentCourse.rows.length) courses.push(currentCourse);
-                currentCourse = { 
-                    name: line.replace('COURSE:', '').trim(), 
-                    rows: [], 
-                    title: globalTitle,
-                    level: globalLevel
-                };
+                const name = line.replace('COURSE:', '').trim();
+                currentCourse = { name, rows: [], title: globalTitle, level: currentLevel };
+                currentLevel = '';
                 inStart = false; b = 1; a = 1; buffer = '';
             } else if (line === '#START') { flushBuffer(); inStart = true; }
             else if (line === '#END') { flushBuffer(); inStart = false; }
@@ -598,6 +582,12 @@ SCOREDIFF:100
                         }
                     }
                 }
+            } else if (!inStart && currentCourse && line.startsWith('LEVEL:')) {
+                currentLevel = line.replace('LEVEL:', '').trim();
+                currentCourse.level = currentLevel;
+            } else if (!inStart && line.startsWith('LEVEL:')) {
+                // 未进入COURSE前的全局LEVEL
+                currentLevel = line.replace('LEVEL:', '').trim();
             }
         }
         flushBuffer();
@@ -677,18 +667,12 @@ SCOREDIFF:100
         tjaCourses.forEach(c => {
             const btn = document.createElement('button');
             btn.className = 'btn btn-example';
-            // 显示名称 + 等级
             const levelStr = c.level ? c.level : '';
             btn.textContent = c.name + (levelStr ? levelStr : '');
-            // 高亮当前选中难度
             if (selectedCourse && selectedCourse.name === c.name && selectedCourse.level === c.level) {
                 btn.classList.add('active');
             }
-            btn.addEventListener('click', () => {
-                selectedCourse = c;
-                updateCourseButtons();   // 刷新按钮状态
-                render();
-            });
+            btn.addEventListener('click', () => { selectedCourse = c; updateCourseButtons(); render(); });
             courseContainer.appendChild(btn);
         });
         courseContainer.style.display = tjaCourses.length ? 'flex' : 'none';
@@ -739,7 +723,7 @@ SCOREDIFF:100
         if (mergeViewActive || backgroundMergeActive) {
             const rowCanvases = rowLayouts.map((l,i) => { const c = document.createElement('canvas'); drawLine(c, l, doInvert, doSmallify, randomMap?.[i], hideBars); return { canvas: c, firstX: l.firstNoteCanvasX, firstY: 100 }; });
             const maxFirstX = Math.max(...rowCanvases.map(r => r.firstX));
-            const infoHeight = tjaModeActive && selectedCourse ? FIXED_HEIGHT : 0;
+            const infoHeight = (tjaModeActive && selectedCourse) ? FIXED_HEIGHT : 0;
             const musicStartY = infoHeight;
             const finalHeight = musicStartY + 100 + (rowLayouts.length-1)*200 + 100;
             const maxWidth = Math.max(...rowCanvases.map((r,i) => (maxFirstX - r.firstX) + r.canvas.width));
@@ -747,21 +731,20 @@ SCOREDIFF:100
             const ctx = merged.getContext('2d');
             if (backgroundMergeActive) { ctx.fillStyle = '#272727'; ctx.fillRect(0,0,merged.width,merged.height); }
 
-            // 绘制信息行
             if (tjaModeActive && selectedCourse) {
                 const title = selectedCourse.title || '';
                 const difficulty = selectedCourse.name || '';
                 const level = selectedCourse.level || '';
                 const infoText = difficulty + (level ? level : '');
                 ctx.save();
-                ctx.font = 'bold 90px "DFPKanteiryu", "KaiTi", sans-serif';  // 原30 → 90
+                ctx.font = 'bold 90px "DFPKanteiryu", "KaiTi", sans-serif';
                 ctx.fillStyle = '#e0d5c5';
                 ctx.shadowColor = 'rgba(0,0,0,0.8)';
                 ctx.shadowBlur = 4;
-                ctx.fillText(title, 12, 90);      // 原40 → 90
+                ctx.fillText(title, 12, 90);
                 if (infoText) {
-                    ctx.font = 'bold 72px "DFPKanteiryu", "KaiTi", sans-serif';  // 原24 → 72
-                    ctx.fillText(infoText, 12, 180);                              // 原76 → 180
+                    ctx.font = 'bold 72px "DFPKanteiryu", "KaiTi", sans-serif';
+                    ctx.fillText(infoText, 12, 180);
                 }
                 ctx.shadowColor = 'transparent';
                 ctx.shadowBlur = 0;
@@ -770,7 +753,7 @@ SCOREDIFF:100
 
             let y = musicStartY;
             rowLayouts.forEach((l,i) => {
-                ctx.drawImage(rowCanvases[i].canvas, maxFirstX - rowCanvases[i].firstX, y - 100);
+                ctx.drawImage(rowCanvases[i].canvas, maxFirstX - rowCanvases[i].firstX, y);
                 if (i < rowLayouts.length - 1) y += 200;
             });
 
@@ -908,7 +891,6 @@ SCOREDIFF:100
     });
     btnCancelMap.addEventListener('click', () => { mapModal.style.display = 'none'; });
 
-    // 示例加载等
     async function loadExamples() {
         try {
             const response = await fetch('example/example.txt');
@@ -1035,11 +1017,8 @@ SCOREDIFF:100
         render();
     });
     bgMergeCheckbox.addEventListener('change', () => {
-    backgroundMergeActive = bgMergeCheckbox.checked;
-        if (backgroundMergeActive) { 
-            mergeViewActive = false; 
-            mergeViewCheckbox.checked = false;
-        }
+        backgroundMergeActive = bgMergeCheckbox.checked;
+        if (backgroundMergeActive) { mergeViewActive = false; mergeViewCheckbox.checked = false; }
         render();
     });
 
@@ -1119,9 +1098,10 @@ SCOREDIFF:100
             return { canvas: c, firstX: l.firstNoteCanvasX, firstY: 100 };
         });
         const maxFirstX = Math.max(...rowCanvases.map(r => r.firstX));
+        const infoHeight = (tjaModeActive && selectedCourse) ? FIXED_HEIGHT : 0;
+        const musicStartY = infoHeight;
+        const finalHeight = musicStartY + 100 + (currentRowLayouts.length-1)*200 + 100;
         const maxWidth = Math.max(...rowCanvases.map((r,i) => (maxFirstX - r.firstX) + r.canvas.width));
-        const infoHeight = tjaModeActive && selectedCourse ? FIXED_HEIGHT : 0;
-        const finalHeight = infoHeight + 100 + (currentRowLayouts.length-1)*200 + 100;
         const mergedCanvas = document.createElement('canvas'); mergedCanvas.width = Math.ceil(maxWidth); mergedCanvas.height = Math.ceil(finalHeight);
         const ctx = mergedCanvas.getContext('2d');
         if (backgroundMergeActive) { ctx.fillStyle = '#272727'; ctx.fillRect(0,0,mergedCanvas.width,mergedCanvas.height); }
@@ -1145,9 +1125,9 @@ SCOREDIFF:100
             ctx.shadowBlur = 0;
             ctx.restore();
         }
-        let y = infoHeight;
+        let y = musicStartY;
         currentRowLayouts.forEach((l,i) => {
-            ctx.drawImage(rowCanvases[i].canvas, maxFirstX - rowCanvases[i].firstX, y - 100);
+            ctx.drawImage(rowCanvases[i].canvas, maxFirstX - rowCanvases[i].firstX, y);
             if (i < currentRowLayouts.length - 1) y += 200;
         });
         const dataURL = mergedCanvas.toDataURL('image/png');
@@ -1206,8 +1186,6 @@ SCOREDIFF:100
         });
     }
 
-    // 初始化
-    updateStyleButtonIcon();
     async function loadCustomFont() {
         const font = new FontFace('DFPKanteiryu', 'url(Font/Modified-DFPKanteiryu-XB.ttf)');
         try {
@@ -1218,6 +1196,7 @@ SCOREDIFF:100
             console.warn('毛笔字体加载失败，将使用默认字体', e);
         }
     }
+
     async function initialize() {
         await loadCustomFont();
         await loadChineseMap();
@@ -1225,7 +1204,6 @@ SCOREDIFF:100
         updateTjaModeUI();
         textarea.value = '(ooxooxooxooxooox)ox(ooox)ox(oxooox)';
         textarea.setAttribute('wrap', 'off');
-        mergeViewCheckbox.checked = true;   // 默认多行合并
         render();
     }
     initialize();
