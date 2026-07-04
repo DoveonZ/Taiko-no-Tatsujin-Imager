@@ -60,7 +60,7 @@
             letter-spacing:0.04em; border:2px solid var(--border); border-radius:var(--radius);
             background:var(--input-bg); color:var(--text); outline:none; resize:vertical;
             line-height:1.6; min-height:10em;
-            white-space: pre; overflow-x: auto; wrap: off; /* 取消自动换行，允许横向滚动 */
+            white-space: pre; overflow-x: auto; wrap: off;
         }
         .btn {
             padding:0 16px; border:none; border-radius:var(--radius-sm); cursor:pointer;
@@ -81,10 +81,8 @@
         }
         .icon-btn img { width:28px; height:28px; object-fit:contain; }
         .icon-btn.active { background:#e8d5c0; border-color:var(--accent); }
-
         #btnStyleSwitch { padding:2px; }
         #btnStyleSwitch img { max-width:28px; max-height:28px; }
-
         .smallify-btn {
             height:var(--ctrl-height); width:calc(var(--ctrl-height)*2);
             background:#f8f5f0; border:1.5px solid var(--border); border-radius:8px;
@@ -95,7 +93,6 @@
         #smallifyImgSmall { height:16px; object-fit:contain; }
         .smallify-btn .arrow { font-size:1.2rem; line-height:1; }
         .smallify-btn.active { background:#e8d5c0; border-color:var(--accent); }
-
         .example-dropdown {
             position:absolute; top:100%; left:0; background:var(--card-bg);
             border:1px solid var(--border); border-radius:var(--radius-sm);
@@ -143,7 +140,6 @@
             border-radius:8px; text-align:center; font-size:0.9rem;
         }
         .tja-only { display:none; }
-        .chinese-map-hint { /* 汉字映射提示行 */ }
         @media (max-width: 768px) {
             .app-container { padding: 16px 12px; }
             .app-header h1 { font-size: 1.5rem; }
@@ -196,7 +192,7 @@
             <button class="btn" id="btnClearBars">清除输入框小节线</button>
             <button class="btn tja-only" id="btnMergeLines">合并短行</button>
             <button class="btn tja-only" id="btnIgnoreScroll">忽略变速</button>
-            <button class="btn" id="btnTJAtoText" style="display:none;">TJA转文本</button>
+            <button class="btn" id="btnTJAtoText" style="display:none;">TJA转ox</button>
             <span class="file-upload btn" id="tjaUploadBtn">
                 📂 加载TJA <input type="file" id="tjaFileInput" accept=".tja,.txt">
             </span>
@@ -205,7 +201,7 @@
                 <div class="example-dropdown" id="exampleDropdown"></div>
             </div>
             <button class="btn btn-primary" id="btnDownloadImage">新页面查看</button>
-            <button class="btn" id="btnCollapseControls" title="收起/展开功能区">🔽 收起功能区</button>
+            <button class="btn" id="btnCollapseControls" title="收起/展开功能区">收起功能区</button>
         </div>
         <div id="courseContainer" style="display:none;" class="course-row"></div>
     </div>
@@ -262,13 +258,15 @@
     const btnCollapseControls = document.getElementById('btnCollapseControls');
     const controlsRow = document.getElementById('controlsRow');
     const chineseMapHint = document.querySelector('.chinese-map-hint');
+    const legendBox = document.getElementById('legendBox');  // ★ 新增
 
     // 常量
     const IMG_SMALL = 106, IMG_BIG = 160, IMG_BALLOON_W = 253, IMG_BALLOON_H = 106;
     const DEFAULT_GAP = 90, FIXED_HEIGHT = 200;
-    const MAX_GAP_SUM = 64 * DEFAULT_GAP;
+    const MAX_GAP_SUM = 64 * DEFAULT_GAP-1;
     const styleSequence = [0, 1, 0, 2];
     let currentStyleIndex = 0, currentStyle = styleSequence[currentStyleIndex];
+    let examples = [];
 
     // 图片对象
     const imgOSmall = new Image(), imgXSmall = new Image(), imgOBig = new Image(), imgXBig = new Image(), imgC = new Image();
@@ -338,7 +336,7 @@ SCOREDIFF:100
     let tjaMergeLinesActive = true;
     let ignoreScrollActive = false;
     let hideBars = false;
-    let controlsCollapsed = false; // 功能区是否收起
+    let controlsCollapsed = false;
 
     function replaceChineseNotes(str) {
         let result = str;
@@ -347,52 +345,6 @@ SCOREDIFF:100
         }
         return result;
     }
-
-    const examples = [
-      { label: '夏祭', value: 'ooo ooo ooo xxx ooo ooo ooo xxx' },
-      { label: '灵魂石', value: '|ooxoooxoooxxooxx|ooxoooxooxxooxxo\n|ooxoooxoxxooxxoo(|ooox)o(ooox)o(xooooox)ooo\n|ooxxooxxoxxxoxxx|ooxxooxx(xxxoooxoxox)' },
-      { label: '工作2000', value: '[|ooo]ooxxxx[ooo]ooxxxx[|ooo]oxxxxx[ooo]xxx x \n[|ooo]ooxxoo[ooo]ooxxoo[|xxx]xxoooo[xxx]xxoooo\n[|ooo]ooxxxx[ooo]ooxxxx[|ooo]xx[ooo]xx[ooo][ooo]o x \n|o[xxx]xo[xxx]x[ooo]oox X [|ooo]ox[ooo]oxo O O' },
-      { label: '里2354', value: 'xxxxooooxxxx{ooooo}20ooooo\n吕吕爻吕爻爻吕吕爻吕爻爻吕右爻吕右爻吕右爻吕右爻口' },
-      { label: '闪光天舞', value: '{xooxo[oox]oxooxox[oox]oxooxoxo}12\n(x   o x   o xxxxxxo o o x xxoox o xxx ooxxo   o)' },
-      { label: '里operate me', value: '{|OooXxxOooXoo|XxxOooXxxOxx\n|OooXxxOooXoo|XxxOooXxxOxx\n|OoXxOoXxOoXx|OoXoXoXxOxOx\n[|oooo]}12 xx(oooo) xxoooo|x' },
-      { label: 'Hurtling Boys', value: '(ooxooxooxooxooox)ox(ooox)ox(oxooox)' },
-      { label: '里Lightning Boys', value: '(oooo)xoxox(oooo)xoxox(oooo)x(oooo)x(ooxooxooxx)\n(ooxooxooxx)oxoxo(xoxoxox)' },
-      { label: 'Aragami', value: '|oooxxxoooxxx|ooxxooooxxxx\n|oooxxxoooxxx|oxxxoxxxoxox\n|ooooxxooooxx|ooxxooxxooxx\n|oxoxoxox(oxoxox|o)ooooooxoo(ooo|o)' },
-      { label: '里Dangan Notes', value: '(oooo)ooo[xxx]ooxxxxoooox\noo[xxx]oo(x oox o x x)\noo[xxx]oo(x xxo x o o)\noxoxooxxoo(oooo)ooo[ooo]oo(oooo)ooox\nooxxooxxooxxooxxooxxoxoxooxxoxox(ooox)x(ooox)x(ooox)x(ooox)x\n[oo(o]ooo)oo[oo(o]ooo)oooooox x xx[xxxxx]xxxoxxxo\n(xxxo)oox[xxx]oooox\n(xxxo)oox[xxxxo]\n(ooox)xox[ooooo]xxxoxx\n[xxx]oxxo[xxo]xxoxxo(xxxo)ox' },
-      { label: '里彁', value: '{|oooxxxo oooxxxo oooxxxo o x oxxxoooxxxo oooxxxo oxxxoxxx{|o}28[xxx]xx [xxx]xxo [xxxxxxx]xxxxox[xxx]xxxxxxo[xxxxxxx]xxoxx| }20\n{|oooxxxo oooxxxo oooxxxo o x oxxxoooxxxo oooxxxo oxxxoxxx{|o}28[xxx]xx [xxx]xxo [xxxxxxx]xxxxox[xxx]xxxxxx{o}20 ooo o oo oo | }28\n{|oooxxxo oooxxxo oooxxxo o x {o}28o[ooooo]o[ooo]ooo[xxx]x[xx]x[xx]xx{|o}20   xox x  ox   xo  o  o    xo     ox   o o ooo o  oo o oo  {o}40  xx xx xx xx xx xx | }42\n{|oooxxxo oooxxxo oooxxxo o x {o}28 o ooooo oo oo ooooo xxx    x xxxx xxxx{|o}40  ox x xo  x o x   o   o o xo    o x o o o ooo o  oo o ooo {o}40  xx xx xx xx xx xx | }42' }
-    ];
-
-    function renderExamples() {
-        exampleDropdown.innerHTML = '';
-        examples.forEach(ex => {
-            const btn = document.createElement('button');
-            btn.className = 'btn btn-example';
-            btn.textContent = ex.label;
-            btn.addEventListener('click', (e) => {
-                textarea.value = ex.value.replace(/\\n/g, '\n');
-                if (tjaModeActive) {
-                    tjaModeActive = false;
-                    btnModeSwitch.textContent = '切换到TJA模式';
-                    updateTjaModeUI();
-                }
-                courseContainer.style.display = 'none';
-                exampleDropdown.style.display = 'none';
-                render();
-                e.stopPropagation();
-            });
-            exampleDropdown.appendChild(btn);
-        });
-    }
-
-    function toggleExampleDropdown() {
-        exampleDropdown.style.display = exampleDropdown.style.display === 'flex' ? 'none' : 'flex';
-    }
-
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('#exampleDropdownBtn') && !e.target.closest('#exampleDropdown')) {
-            exampleDropdown.style.display = 'none';
-        }
-    });
 
     function normalize(str) { return str.replace(/（/g,'(').replace(/）/g,')').replace(/【/g,'[').replace(/】/g,']').replace(/｛/g,'{').replace(/｝/g,'}').replace(/，/g,' ').replace(/,/g,' '); }
 
@@ -481,9 +433,8 @@ SCOREDIFF:100
         let minX = Infinity, maxX = -Infinity, firstNoteCenterX = IMG_SMALL/2;
         elements.forEach((el, idx) => {
             if (el.type === 'space') {
-                // 空音符仍然参与宽度计算（占位），但不影响音符中心位置计算
                 if (pos[idx] < minX) minX = pos[idx];
-                if (pos[idx] + IMG_SMALL > maxX) maxX = pos[idx] + IMG_SMALL; // 确保空音符位置计入总宽度
+                if (pos[idx] + IMG_SMALL > maxX) maxX = pos[idx] + IMG_SMALL;
                 return;
             }
             const isBig = el.type === 'O' || el.type === 'X', size = el.type === 'c' ? IMG_BALLOON_W : (isBig ? IMG_BIG : IMG_SMALL);
@@ -508,9 +459,10 @@ SCOREDIFF:100
         const ctx = canvas.getContext('2d');
         canvas.width = Math.ceil(layout.width); canvas.height = FIXED_HEIGHT;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        for (let i = 0; i < layout.elements.length; i++) {
-            const el = layout.elements[i];
-            if (el.type === 'space' || !el.hasBar || hideBarLines) continue; // 空音符不画小节线（但hasBar可能为true，这里跳过）
+       for (let i = 0; i < layout.elements.length; i++) {
+    const el = layout.elements[i];
+    if (!el.hasBar || hideBarLines) continue;
+    // 绘制小节线...
             const centerX = layout.positions[i] + IMG_SMALL/2 - layout.minX;
             if (barImage.complete && barImage.naturalWidth > 0) {
                 const bw = barImage.naturalWidth || 5, bh = barImage.naturalHeight || 200;
@@ -520,7 +472,7 @@ SCOREDIFF:100
         ctx.save(); ctx.translate(-layout.minX, 0);
         for (let i = layout.elements.length - 1; i >= 0; i--) {
             const el = layout.elements[i];
-            if (!'oxOXc'.includes(el.type)) continue; // 空音符不画图形
+            if (!'oxOXc'.includes(el.type)) continue;
             let drawType = el.type;
             if (randomMapRow && randomMapRow[i]) drawType = invertType(drawType, true);
             drawType = invertType(drawType, doInvert);
@@ -552,7 +504,7 @@ SCOREDIFF:100
         const courses = [];
         const lines = text.split('\n');
         let currentCourse = null, inStart = false, b = 1, a = 1, buffer = '';
-        const mapDigit = { '0':' ', '1':'o', '2':'x', '3':'O', '4':'X', '7':'c' }; // 只有0,5,6,8,9映射为空格
+        const mapDigit = { '0':' ', '1':'o', '2':'x', '3':'O', '4':'X', '7':'c' };
         const flushBuffer = () => {
             if (!buffer) return;
             const digits = buffer.replace(/\s/g, '');
@@ -615,14 +567,14 @@ SCOREDIFF:100
     }
 
     function convertTJAtoText(courseRows) {
-        return courseRows.map(row => {
-            const notes = row.elements.map(el => el.type === 'space' ? ' ' : el.type).join('');
-            const y = 1440 / row.baseGap;
-            if (Math.abs(y - 16) < 0.001) return notes;
-            const yStr = Number.isInteger(y) ? y.toString() : y.toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
-            return `{${notes}}${yStr}`;
-        }).join('\n');
-    }
+    return courseRows.map(row => {
+        const notes = row.elements.map(el => el.type === 'space' ? ' ' : el.type).join('');
+        const y = row.baseGap > 0 ? 1440 / row.baseGap : 16;
+        if (Math.abs(y - 16) < 0.001) return notes;
+        const yStr = Number.isInteger(y) ? y.toString() : y.toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
+        return `{${notes}}${yStr}`;
+    }).join('\n');
+}
 
     function mergeTJARows(rows, hsScale) {
         const layouts = [];
@@ -698,7 +650,6 @@ SCOREDIFF:100
         if (tjaModeActive) {
             tjaUploadBtn.style.display = 'inline-flex';
             btnClearBars.style.display = 'none';
-            // 隐藏汉字映射提示
             if (chineseMapHint) chineseMapHint.style.display = 'none';
         } else {
             tjaUploadBtn.style.display = 'none';
@@ -707,6 +658,8 @@ SCOREDIFF:100
         }
         btnMergeLines.classList.toggle('active', tjaMergeLinesActive);
         btnIgnoreScroll.classList.toggle('active', ignoreScrollActive);
+        legendBox.style.display = tjaModeActive ? 'none' : '';
+        btnTJAtoText.style.display = tjaModeActive ? 'inline-flex' : 'none';
     }
 
     let currentRowLayouts = [];
@@ -729,7 +682,7 @@ SCOREDIFF:100
             rowLayouts = rows.map(e => layoutLine(e, hsScale)).filter(l => l.elements.some(e => e.type !== 'space'));
         }
         currentRowLayouts = rowLayouts;
-        const modeInfo = tjaModeActive ? (tjaMergeLinesActive ? '合并短行' : '原始分行') : '文本模式';
+        const modeInfo = tjaModeActive ? (tjaMergeLinesActive ? '合并短行' : '原始分行') : 'ox模式';
         infoBar.innerHTML = `行数:${rowLayouts.length} | 音符:${rowLayouts.reduce((s,l)=>s+l.elements.filter(e=>e.type!=='space').length,0)} | HS:${hsScale.toFixed(2)} | 样式:${currentStyle} | ${modeInfo}`;
         previewContainer.querySelectorAll('.preview-row').forEach(el => el.remove());
         if (!rowLayouts.length) { placeholder.style.display = 'block'; return; }
@@ -770,6 +723,39 @@ SCOREDIFF:100
         }
     }
 
+    async function loadExamples() {
+        try {
+            const response = await fetch('example/example.txt');
+            if (!response.ok) throw new Error('Network error');
+            const text = await response.text();
+            examples = parseExampleFile(text);
+        } catch (e) {
+            console.warn('加载外部示例失败，使用内置回退', e);
+            examples = getFallbackExamples();
+        }
+        renderExamples();
+    }
+
+    function parseExampleFile(text) {
+        const result = [];
+        const blocks = text.split(/\n(?=#)/);
+        for (const block of blocks) {
+            const lines = block.trim().split('\n');
+            const label = lines[0].replace(/^#/, '').trim();
+            const value = lines.slice(1).join('\n').trim();
+            if (label && value) result.push({ label, value });
+        }
+        return result;
+    }
+
+    function getFallbackExamples() {
+        return [
+            { label: '夏祭', value: 'ooo ooo ooo xxx ooo ooo ooo xxx' },
+            { label: '灵魂石', value: '|ooxoooxoooxxooxx|ooxoooxooxxooxxo\n|ooxoooxoxxooxxoo(|ooox)o(ooox)o(xooooox)ooo\n|ooxxooxxoxxxoxxx|ooxxooxx(xxxoooxoxox)' },
+            { label: '工作2000', value: '[|ooo]ooxxxx[ooo]ooxxxx[|ooo]oxxxxx[ooo]xxx x \n[|ooo]ooxxoo[ooo]ooxxoo[|xxx]xxoooo[xxx]xxoooo\n[|ooo]ooxxxx[ooo]ooxxxx[|ooo]xx[ooo]xx[ooo][ooo]o x \n|o[xxx]xo[xxx]x[ooo]oox X [|ooo]ox[ooo]oxo O O' }
+        ];
+    }
+
     async function loadExternalTJA() {
         try {
             const response = await fetch('example/example.tja');
@@ -783,7 +769,7 @@ SCOREDIFF:100
 
     async function enterTJAMode() {
         tjaModeActive = true;
-        btnModeSwitch.textContent = '切换到文本模式';
+        btnModeSwitch.textContent = '切换到ox模式';
         updateTjaModeUI();
         const tjaContent = await loadExternalTJA();
         textarea.value = tjaContent;
@@ -793,26 +779,26 @@ SCOREDIFF:100
         render();
     }
 
-    function exitTJAMode() {
-        tjaModeActive = false;
-        btnModeSwitch.textContent = '切换到TJA模式';
-        updateTjaModeUI();
-        textarea.value = '';
-        courseContainer.style.display = 'none';
-        selectedCourse = null;
-        render();
-    }
+    function exitTJAMode(clearText = true) {
+    tjaModeActive = false;
+    btnModeSwitch.textContent = '切换到TJA模式';
+    updateTjaModeUI();
+    if (clearText) textarea.value = '';      // 只有明确要求清空时才清空
+    courseContainer.style.display = 'none';
+    selectedCourse = null;
+    render();
+}
 
     btnModeSwitch.addEventListener('click', () => {
-        if (tjaModeActive) exitTJAMode();
-        else enterTJAMode();
-    });
+    if (tjaModeActive) exitTJAMode(true);   // 手动切换时清空
+    else enterTJAMode();
+});
 
-    btnTJAtoText.addEventListener('click', () => {
-        if (!selectedCourse) return;
-        textarea.value = convertTJAtoText(selectedCourse.rows);
-        exitTJAMode();
-    });
+   btnTJAtoText.addEventListener('click', () => {
+    if (!selectedCourse) return;
+    textarea.value = convertTJAtoText(selectedCourse.rows);
+    exitTJAMode(false);   // 不清空文本
+});
 
     tjaFileInput.addEventListener('change', function(e) {
         const file = e.target.files[0];
@@ -909,45 +895,30 @@ SCOREDIFF:100
         render();
     });
 
-    // 收起/展开功能区
     btnCollapseControls.addEventListener('click', () => {
         controlsCollapsed = !controlsCollapsed;
-        // 控制中间区域：controlsRow、courseContainer、infoBar、tutorialBox、legendBox、divergenceWarning
-        const elementsToToggle = [
-            controlsRow.querySelectorAll('.btn, .icon-btn, .control-item, .file-upload, .smallify-btn'),
-            courseContainer,
-            infoBar,
-            tutorialBox,
-            document.getElementById('legendBox'),
-            divergenceWarning
-        ];
-        // 简化：直接隐藏controlsRow中的所有直接子元素，以及后面几个块
         if (controlsCollapsed) {
-            // 收起：隐藏controlsRow内除收起按钮外的所有元素，以及下面几个块
             Array.from(controlsRow.children).forEach(child => {
                 if (child !== btnCollapseControls) child.style.display = 'none';
             });
             courseContainer.style.display = 'none';
             infoBar.style.display = 'none';
             tutorialBox.style.display = 'none';
-            document.getElementById('legendBox').style.display = 'none';
+            legendBox.style.display = 'none';
             divergenceWarning.style.display = 'none';
             btnCollapseControls.textContent = '展开功能区';
         } else {
-            // 展开：恢复显示
             Array.from(controlsRow.children).forEach(child => {
-                if (child !== btnCollapseControls) child.style.display = '';
+                if (child !== btnCollapseControls && child !== btnModeSwitch) child.style.display = '';
             });
-            // 但需根据TJA模式调整部分可见性
             updateTjaModeUI();
             infoBar.style.display = '';
             tutorialBox.style.display = tjaModeActive ? 'none' : 'flex';
-            document.getElementById('legendBox').style.display = '';
+            legendBox.style.display = tjaModeActive ? 'none' : '';
             if (chineseMapHint) chineseMapHint.style.display = tjaModeActive ? 'none' : '';
             divergenceWarning.style.display = tjaModeActive ? 'block' : 'none';
             btnCollapseControls.textContent = '收起功能区';
         }
-        // 确保模式切换按钮始终可见（如果在controlsRow内）
         btnModeSwitch.style.display = '';
         btnCollapseControls.style.display = '';
     });
@@ -980,6 +951,16 @@ SCOREDIFF:100
         toggleExampleDropdown();
     });
 
+    function toggleExampleDropdown() {
+        exampleDropdown.style.display = exampleDropdown.style.display === 'flex' ? 'none' : 'flex';
+    }
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#exampleDropdownBtn') && !e.target.closest('#exampleDropdown')) {
+            exampleDropdown.style.display = 'none';
+        }
+    });
+
     function updateStyleButtonIcon() {
         const nextStyle = styleSequence[(currentStyleIndex + 1) % styleSequence.length];
         btnStyleSwitch.innerHTML = '';
@@ -991,12 +972,33 @@ SCOREDIFF:100
         smallifyImgSmall.src = `img/${nextStyle}/o.png`;
     }
 
+    function renderExamples() {
+        exampleDropdown.innerHTML = '';
+        examples.forEach(ex => {
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-example';
+            btn.textContent = ex.label;
+            btn.addEventListener('click', (e) => {
+                textarea.value = ex.value.replace(/\\n/g, '\n');
+                if (tjaModeActive) {
+                    tjaModeActive = false;
+                    btnModeSwitch.textContent = '切换到TJA模式';
+                    updateTjaModeUI();
+                }
+                courseContainer.style.display = 'none';
+                exampleDropdown.style.display = 'none';
+                render();
+                e.stopPropagation();
+            });
+            exampleDropdown.appendChild(btn);
+        });
+    }
+
     // 初始化
     updateStyleButtonIcon();
-    renderExamples();
+    loadExamples();
     updateTjaModeUI();
     textarea.value = '(ooxooxooxooxooox)ox(ooox)ox(oxooox)';
-    // 确保输入框wrap属性为off
     textarea.setAttribute('wrap', 'off');
     setTimeout(() => render(), 400);
   })();
