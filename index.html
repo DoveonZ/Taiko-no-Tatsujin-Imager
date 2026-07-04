@@ -435,7 +435,11 @@ function parseChineseMap(text) {
         if (line.startsWith('#')) {
             currentTarget = line.substring(1).trim();
         } else if (line && currentTarget) {
-            map[line] = currentTarget;
+            // 按制表符或连续空格拆分
+            const chars = line.split(/[ \t]+/);
+            for (const ch of chars) {
+                if (ch) map[ch] = currentTarget;
+            }
         }
     }
     return map;
