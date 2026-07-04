@@ -354,7 +354,7 @@ SCOREDIFF:100
     }
 
     // 状态变量
-    let randomMap = null, invertActive = false, mergeViewActive = false, backgroundMergeActive = false;
+    let randomMap = null, invertActive = false, mergeViewActive = true, backgroundMergeActive = false;
     let smallifyActive = false;
     let tjaModeActive = false, tjaCourses = [], selectedCourse = null;
     let tjaMergeLinesActive = true;
@@ -676,8 +676,19 @@ SCOREDIFF:100
         courseContainer.innerHTML = '<span class="examples-label">难度选择：</span>';
         tjaCourses.forEach(c => {
             const btn = document.createElement('button');
-            btn.className = 'btn btn-example'; btn.textContent = c.name;
-            btn.addEventListener('click', () => { selectedCourse = c; render(); });
+            btn.className = 'btn btn-example';
+            // 显示名称 + 等级
+            const levelStr = c.level ? c.level : '';
+            btn.textContent = c.name + (levelStr ? levelStr : '');
+            // 高亮当前选中难度
+            if (selectedCourse && selectedCourse.name === c.name && selectedCourse.level === c.level) {
+                btn.classList.add('active');
+            }
+            btn.addEventListener('click', () => {
+                selectedCourse = c;
+                updateCourseButtons();   // 刷新按钮状态
+                render();
+            });
             courseContainer.appendChild(btn);
         });
         courseContainer.style.display = tjaCourses.length ? 'flex' : 'none';
@@ -743,14 +754,14 @@ SCOREDIFF:100
                 const level = selectedCourse.level || '';
                 const infoText = difficulty + (level ? level : '');
                 ctx.save();
-                ctx.font = 'bold 30px "DFPKanteiryu", "KaiTi", sans-serif';
+                ctx.font = 'bold 90px "DFPKanteiryu", "KaiTi", sans-serif';  // 原30 → 90
                 ctx.fillStyle = '#e0d5c5';
                 ctx.shadowColor = 'rgba(0,0,0,0.8)';
                 ctx.shadowBlur = 4;
-                ctx.fillText(title, 12, 40);
+                ctx.fillText(title, 12, 90);      // 原40 → 90
                 if (infoText) {
-                    ctx.font = 'bold 24px "DFPKanteiryu", "KaiTi", sans-serif';
-                    ctx.fillText(infoText, 12, 40 + 36);
+                    ctx.font = 'bold 72px "DFPKanteiryu", "KaiTi", sans-serif';  // 原24 → 72
+                    ctx.fillText(infoText, 12, 180);                              // 原76 → 180
                 }
                 ctx.shadowColor = 'transparent';
                 ctx.shadowBlur = 0;
@@ -1024,8 +1035,11 @@ SCOREDIFF:100
         render();
     });
     bgMergeCheckbox.addEventListener('change', () => {
-        backgroundMergeActive = bgMergeCheckbox.checked;
-        if (backgroundMergeActive) { mergeViewActive = false; mergeViewCheckbox.checked = false; }
+    backgroundMergeActive = bgMergeCheckbox.checked;
+        if (backgroundMergeActive) { 
+            mergeViewActive = false; 
+            mergeViewCheckbox.checked = false;
+        }
         render();
     });
 
@@ -1118,20 +1132,19 @@ SCOREDIFF:100
             const level = selectedCourse.level || '';
             const infoText = difficulty + (level ? level : '');
             ctx.save();
-            ctx.font = 'bold 30px "DFPKanteiryu", "KaiTi", sans-serif';
+            ctx.font = 'bold 90px "DFPKanteiryu", "KaiTi", sans-serif';
             ctx.fillStyle = '#e0d5c5';
             ctx.shadowColor = 'rgba(0,0,0,0.8)';
             ctx.shadowBlur = 4;
-            ctx.fillText(title, 12, 40);
+            ctx.fillText(title, 12, 90);
             if (infoText) {
-                ctx.font = 'bold 24px "DFPKanteiryu", "KaiTi", sans-serif';
-                ctx.fillText(infoText, 12, 40 + 36);
+                ctx.font = 'bold 72px "DFPKanteiryu", "KaiTi", sans-serif';
+                ctx.fillText(infoText, 12, 180);
             }
             ctx.shadowColor = 'transparent';
             ctx.shadowBlur = 0;
             ctx.restore();
         }
-
         let y = infoHeight;
         currentRowLayouts.forEach((l,i) => {
             ctx.drawImage(rowCanvases[i].canvas, maxFirstX - rowCanvases[i].firstX, y - 100);
@@ -1212,6 +1225,7 @@ SCOREDIFF:100
         updateTjaModeUI();
         textarea.value = '(ooxooxooxooxooox)ox(ooox)ox(oxooox)';
         textarea.setAttribute('wrap', 'off');
+        mergeViewCheckbox.checked = true;   // 默认多行合并
         render();
     }
     initialize();
