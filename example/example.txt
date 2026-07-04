@@ -13,8 +13,8 @@ ooo ooo ooo xxx ooo ooo ooo xxx
 |o[xxx]xo[xxx]x[ooo]oox X [|ooo]ox[ooo]oxo O O
 
 #里2354
-xxxxooooxxxx{ooooo}20ooooo
-吕吕爻吕爻爻吕吕爻吕爻爻吕右爻吕右爻吕右爻吕右爻口
+|o   xxxxoooo|xxxx{oooooo}20ooo|o   ooooxxxx|oooo{xxxxxx}20xxxx
+|吕吕爻吕爻爻|吕吕爻吕爻爻|吕右爻吕右爻|吕右爻吕右爻口
 
 #闪光天舞
 {xooxo[oox]oxooxox[oox]oxooxoxo}12
