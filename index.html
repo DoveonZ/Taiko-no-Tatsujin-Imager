@@ -528,6 +528,7 @@ SCOREDIFF:100
         const courses = [];
         const lines = text.split('\n');
         let currentCourse = null, inStart = false, b = 1, a = 1, buffer = '';
+        let globalTitle = '';   // ★ 新增
         const mapDigit = { '0':' ', '1':'o', '2':'x', '3':'O', '4':'X', '7':'c' };
         const flushBuffer = () => {
             if (!buffer) return;
@@ -540,14 +541,22 @@ SCOREDIFF:100
             buffer = '';
         };
         for (let line of lines) {
+            if (line.startsWith('TITLE:')) {
+                globalTitle = line.replace('TITLE:', '').trim();
+                continue;
+            }
             line = line.trim();
             const ci = line.indexOf('//'); if (ci !== -1) line = line.substring(0, ci).trim();
             if (!line) continue;
             if (line.startsWith('COURSE:')) {
                 flushBuffer();
                 if (currentCourse && currentCourse.rows.length) courses.push(currentCourse);
-                currentCourse = { name: line.replace('COURSE:', '').trim(), rows: [] };
-                inStart = false; b = 1; a = 1; buffer = '';
+                currentCourse = { 
+                    name: line.replace('COURSE:', '').trim(), 
+                    rows: [], 
+                    title: globalTitle   // ★ 记录 TITLE
+                };
+            inStart = false; b = 1; a = 1; buffer = '';
             } else if (line === '#START') { flushBuffer(); inStart = true; }
             else if (line === '#END') { flushBuffer(); inStart = false; }
             else if (inStart && currentCourse) {
@@ -720,6 +729,15 @@ SCOREDIFF:100
             if (backgroundMergeActive) { ctx.fillStyle = '#272727'; ctx.fillRect(0,0,merged.width,merged.height); }
             let y = 100;
             rowLayouts.forEach((l,i) => { ctx.drawImage(rowCanvases[i].canvas, maxFirstX - rowCanvases[i].firstX, y-100); if (i < rowLayouts.length-1) y += 200; });
+            if (tjaModeActive && selectedCourse && selectedCourse.title) {
+                ctx.font = 'bold 28px "DFPKanteiryu", "KaiTi", sans-serif';
+                ctx.fillStyle = '#e0d5c5';   // 与预览文字颜色一致
+                ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                ctx.shadowBlur = 4;
+                ctx.fillText(selectedCourse.title, 12, 12);
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+            }
             const div = document.createElement('div'); div.className = 'preview-row';
             div.innerHTML = `<div class="preview-row-header"><span>${backgroundMergeActive ? '合并背景' : '合并多行'} (${rowLayouts.length}行)</span></div>`;
             const wrap = document.createElement('div'); wrap.className = 'preview-canvas-wrapper'; wrap.appendChild(merged); div.appendChild(wrap);
@@ -1127,7 +1145,18 @@ SCOREDIFF:100
 
     // 初始化
     updateStyleButtonIcon();
+    async function loadCustomFont() {
+        const font = new FontFace('DFPKanteiryu', 'url(Font/Modified-DFPKanteiryu-XB.ttf)');
+        try {
+            await font.load();
+            document.fonts.add(font);
+            console.log('毛笔字体加载成功');
+        } catch (e) {
+            console.warn('毛笔字体加载失败，将使用默认字体', e);
+        }
+    }
     async function initialize() {
+        await loadCustomFont();
         await loadChineseMap();
         await loadExamples();
         updateTjaModeUI();
