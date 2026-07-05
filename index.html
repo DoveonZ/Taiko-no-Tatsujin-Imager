@@ -482,41 +482,57 @@ SCOREDIFF:100
     // ----- TJA解析器 (稳健支持内联#SCROLL等指令) -----
     // ----- TJA解析器 (每大行末尾自动添加小节线) -----
      // ----- TJA解析器 (不自动添加行尾小节线) -----
-    function parseTJA(text) {
-        const courses = [];
-        const lines = text.split(/\r?\n/);
-        let curCourse = null, inStart = false, b = 1, a = 1;
-        let buffer = '';
-        let globalTitle = '', curLevel = '';
-        const sliderStack = [];
-        let sliderIdCounter = 0;
-        const mapDigit = { '0':' ', '1':'o', '2':'x', '3':'O', '4':'X', '7':'c' };
+function parseTJA(text) {
+    const courses = [];
+    const lines = text.split(/\r?\n/);
+    let curCourse = null, inStart = false, b = 1, a = 1;
+    let buffer = '';
+    let globalTitle = '', curLevel = '';
+    const sliderStack = [];      // 改为存储 { el, isBig, isBalloon }
+    let sliderIdCounter = 0;
+    const mapDigit = { '0':' ', '1':'o', '2':'x', '3':'O', '4':'X', '7':'c' };
 
-        const processSegment = (seg) => {
-            if (!seg || !curCourse) return;
-            const n = seg.length;
-            const baseGap = DEFAULT_GAP * 16 * a * b / n;
-            const elements = [];
-            for (const ch of seg) {
-                if (ch === '5' || ch === '6') {
-                    const isBig = ch === '6';
-                    const el = { type: isBig ? 'L' : 'l', pathFactors: [1], hasBar: false, curlGapToNext: 1, isSlider: true, isBig, sliderRole: 'head' };
-                    el.sliderId = sliderIdCounter++; el.hasTail = true;
-                    sliderStack.push({ el, isBig });
-                    elements.push(el);
-                } else if (ch === '8') {
-                    if (sliderStack.length > 0) {
-                        const head = sliderStack.pop();
-                        const tailEl = { type: head.isBig ? 'L' : 'l', pathFactors: [1], hasBar: false, curlGapToNext: 1, isSlider: true, isBig: head.isBig, sliderRole: 'tail', pairId: head.el.sliderId };
+    const processSegment = (seg) => {
+        if (!seg || !curCourse) return;
+        const n = seg.length;
+        const baseGap = DEFAULT_GAP * 16 * a * b / n;
+        const elements = [];
+        for (const ch of seg) {
+            if (ch === '5' || ch === '6') {
+                // 长条头
+                const isBig = ch === '6';
+                const el = { type: isBig ? 'L' : 'l', pathFactors: [1], hasBar: false, curlGapToNext: 1, isSlider: true, isBig, sliderRole: 'head' };
+                el.sliderId = sliderIdCounter++;
+                el.hasTail = true;
+                sliderStack.push({ el, isBig, isBalloon: false });
+                elements.push(el);
+            } else if (ch === '7') {
+                // 气球头
+                const el = { type: 'c', pathFactors: [1], hasBar: false, curlGapToNext: 1 };
+                sliderStack.push({ el: null, isBig: false, isBalloon: true });
+                elements.push(el);
+            } else if (ch === '8') {
+                if (sliderStack.length > 0) {
+                    const top = sliderStack.pop();
+                    if (top.isBalloon) {
+                        // 气球结束：生成一个占位空格，保持小节长度
+                        elements.push({ type: 'space', pathFactors: [1], hasBar: false, curlGapToNext: 1 });
+                    } else {
+                        // 长条结束：生成尾部元素
+                        const tailEl = { type: top.isBig ? 'L' : 'l', pathFactors: [1], hasBar: false, curlGapToNext: 1, isSlider: true, isBig: top.isBig, sliderRole: 'tail', pairId: top.el.sliderId };
                         elements.push(tailEl);
                     }
                 } else {
-                    elements.push({ type: mapDigit[ch] || ' ', pathFactors: [1], hasBar: false, curlGapToNext: 1 });
+                    // 多余的 8 当作空格
+                    elements.push({ type: 'space', pathFactors: [1], hasBar: false, curlGapToNext: 1 });
                 }
+            } else {
+                elements.push({ type: mapDigit[ch] || ' ', pathFactors: [1], hasBar: false, curlGapToNext: 1 });
             }
-            if (elements.length && !elements[0].isSlider) elements[0].hasBar = true;
-            curCourse.rows.push({ elements, baseGap });
-        };
+        }
+        if (elements.length && !elements[0].isSlider) elements[0].hasBar = true;
+        curCourse.rows.push({ elements, baseGap });
+    };
 
         const applyDirective = (dir) => {
             if (dir.startsWith('#MEASURE')) {
