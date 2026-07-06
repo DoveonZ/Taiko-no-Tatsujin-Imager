@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>太鼓之达人图像生成器</title>
     <style>
+        /* 样式保持不变，略去以节约篇幅 */
         :root {
             --bg: #f5f0eb;
             --card-bg: #ffffff;
@@ -14,12 +15,12 @@
             --accent: #c17f59;
             --accent-hover: #a06b48;
             --input-bg: #fdfaf6;
-            --shadow: 0 2px 12px rgba(0,0,0,0.06);
-            --shadow-lg: 0 8px 32px rgba(0,0,0,0.10);
+            --shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.10);
             --radius: 12px;
             --radius-sm: 8px;
             --transition: 0.2s ease;
-            --font-mono: 'SF Mono','Cascadia Code','Consolas','Monaco','Menlo',monospace;
+            --font-mono: 'SF Mono', 'Cascadia Code', 'Consolas', 'Monaco', 'Menlo', monospace;
             --preview-bg: #272727;
             --preview-card-bg: #1e1e1e;
             --preview-text: #e0d5c5;
@@ -29,13 +30,8 @@
         * { margin:0; padding:0; box-sizing:border-box; }
         body {
             font-family: -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            min-height:100vh;
-            display:flex;
-            align-items:flex-start;
-            justify-content:center;
-            padding:12px;
+            background: var(--bg); color: var(--text); min-height:100vh; display:flex;
+            align-items:flex-start; justify-content:center; padding:12px;
             background-image: radial-gradient(ellipse at 30% 20%, rgba(193,127,89,0.06) 0%, transparent 60%),
             radial-gradient(ellipse at 70% 80%, rgba(160,140,110,0.05) 0%, transparent 60%);
         }
@@ -152,7 +148,7 @@
 <div class="app-container">
     <div class="app-header">
         <h1>太鼓之达人图像生成器</h1>
-        <p class="subtitle">Made by Doveon a.k.a meの我 & Deepseek</p>
+        <p class="subtitle">Made by Doveon a.k.a meの我 & Copilot & Deepseek</p>
     </div>
     <div class="input-section">
         <div class="input-row">
@@ -177,6 +173,7 @@
             <button class="btn" id="btnClearBars">清除输入框小节线</button>
             <button class="btn tja-only" id="btnMergeLines">合并短行</button>
             <button class="btn tja-only" id="btnIgnoreScroll">注重目视（测试版）</button>
+            <button class="btn tja-only active" id="btnBalloonDetail">显示具体信息</button>
             <button class="btn" id="btnTJAtoText" style="display:none;">TJA转ox</button>
             <span class="file-upload btn" id="tjaUploadBtn">
                 📂 加载TJA <input type="file" id="tjaFileInput" accept=".tja,.txt">
@@ -203,10 +200,13 @@
         <span>高亮：<code>*</code> 后首个音符发光</span>
         <span>小节线：<code>|</code> <code>/</code> <code>\</code></span>
         <span>长条：<code>l...l</code> 小 <code>L...L</code> 大</span>
+        <span>长条身：<code>-</code> 小 <code>=</code> 大</span>
+        <span>气球身：<code>+</code></span>
     </div>
     <div class="legend" id="legendBox">
         <span>默认间隔16分</span><span><code>( )</code> ×1.5</span><span><code>[ ]</code> ×2</span><span><code>{ }y</code> y分音</span>
         <span>空格空音符</span><span>o/x 小</span><span>O/X 大</span><span>c 气球</span><span>l/L 长条</span>
+        <span>- 长条身</span><span>= 大长条身</span><span>+ 气球身</span>
         <button class="btn" id="btnEditMap" style="margin-left:auto;">✏️ 编辑映射</button>
     </div>
 </div>
@@ -265,6 +265,7 @@
     const btnAddMapRow = document.getElementById('btnAddMapRow');
     const btnSaveMap = document.getElementById('btnSaveMap');
     const btnCancelMap = document.getElementById('btnCancelMap');
+    const btnBalloonDetail = document.getElementById('btnBalloonDetail');
 
     // ----- 常量与全局变量 -----
     const IMG_SMALL = 106, IMG_BIG = 160, IMG_BALLOON_W = 253, IMG_BALLOON_H = 106;
@@ -273,13 +274,13 @@
     let currentStyleIndex = 0, currentStyle = styleSequence[currentStyleIndex];
     let examples = [];
 
-    const imgOSmall = new Image(), imgXSmall = new Image(), imgOBig = new Image(), imgXBig = new Image(), imgC = new Image();
+    const imgOSmall = new Image(), imgXSmall = new Image(), imgOBig = new Image(), imgXBig = new Image(), imgC1 = new Image(), imgC2 = new Image(), imgC3 = new Image();
     const barImage = new Image(); barImage.src = 'img/bar.png';
     const imgL1 = new Image(), imgL1Big = new Image(), imgL2 = new Image(), imgL2Big = new Image(), imgL3 = new Image(), imgL3Big = new Image();
-    const loaded = { o:false, x:false, O:false, X:false, c:false, l1:false, ll1:false, l2:false, ll2:false, l3:false, ll3:false };
+    const loaded = { o:false, x:false, O:false, X:false, c:false, c1:false, c2:false, c3:false, l1:false, ll1:false, l2:false, ll2:false, l3:false, ll3:false };
 
     let chineseNoteMap = {}, userChineseMap = {};
-    const BASIC_NOTES = [' ','o','x','O','X','c','l','L'];
+    const BASIC_NOTES = [' ','o','x','O','X','c','l','L','-','=','+'];
 
     const FALLBACK_TJA = `TITLE:Black Rose Apostle
 SUBTITLE:--
@@ -300,7 +301,10 @@ SCOREDIFF:100
 
     function updateImageSources() {
         const p = 'img/'+currentStyle+'/';
-        imgOSmall.src=p+'o.png'; imgXSmall.src=p+'x.png'; imgOBig.src=p+'oo.png'; imgXBig.src=p+'xx.png'; imgC.src=p+'c.png';
+        imgOSmall.src=p+'o.png'; imgXSmall.src=p+'x.png'; imgOBig.src=p+'oo.png'; imgXBig.src=p+'xx.png';
+        imgC1.src = p + 'c1.png';
+        imgC2.src = p + 'c2.png';
+        imgC3.src = p + 'c3.png';
         smallifyImgBig.src=p+'oo.png'; smallifyImgSmall.src=p+'o.png';
         imgL1.src=p+'l1.png'; imgL1Big.src=p+'ll1.png'; imgL2.src=p+'l2.png'; imgL2Big.src=p+'ll2.png'; imgL3.src=p+'l3.png'; imgL3Big.src=p+'ll3.png';
     }
@@ -309,13 +313,18 @@ SCOREDIFF:100
         imgXSmall.onload=()=>{loaded.x=true;checkAllLoaded();}; imgXSmall.onerror=()=>{loaded.x=false;checkAllLoaded();};
         imgOBig.onload=()=>{loaded.O=true;checkAllLoaded();}; imgOBig.onerror=()=>{loaded.O=false;checkAllLoaded();};
         imgXBig.onload=()=>{loaded.X=true;checkAllLoaded();}; imgXBig.onerror=()=>{loaded.X=false;checkAllLoaded();};
-        imgC.onload=()=>{loaded.c=true;checkAllLoaded();}; imgC.onerror=()=>{loaded.c=false;checkAllLoaded();};
         imgL1.onload=()=>{loaded.l1=true;checkAllLoaded();}; imgL1.onerror=()=>{loaded.l1=false;checkAllLoaded();};
         imgL1Big.onload=()=>{loaded.ll1=true;checkAllLoaded();}; imgL1Big.onerror=()=>{loaded.ll1=false;checkAllLoaded();};
         imgL2.onload=()=>{loaded.l2=true;checkAllLoaded();}; imgL2.onerror=()=>{loaded.l2=false;checkAllLoaded();};
         imgL2Big.onload=()=>{loaded.ll2=true;checkAllLoaded();}; imgL2Big.onerror=()=>{loaded.ll2=false;checkAllLoaded();};
         imgL3.onload=()=>{loaded.l3=true;checkAllLoaded();}; imgL3.onerror=()=>{loaded.l3=false;checkAllLoaded();};
         imgL3Big.onload=()=>{loaded.ll3=true;checkAllLoaded();}; imgL3Big.onerror=()=>{loaded.ll3=false;checkAllLoaded();};
+        imgC1.onload = () => { loaded.c1 = true; checkAllLoaded(); };
+        imgC1.onerror = () => { loaded.c1 = false; checkAllLoaded(); };
+        imgC2.onload = () => { loaded.c2 = true; checkAllLoaded(); };
+        imgC2.onerror = () => { loaded.c2 = false; checkAllLoaded(); };
+        imgC3.onload = () => { loaded.c3 = true; checkAllLoaded(); };
+        imgC3.onerror = () => { loaded.c3 = false; checkAllLoaded(); };
     }
     updateImageSources(); bindImageEvents();
 
@@ -324,215 +333,863 @@ SCOREDIFF:100
 
     let randomMap=null, invertActive=false, mergeViewActive=true, backgroundMergeActive=false;
     let smallifyActive=false, tjaModeActive=false, tjaCourses=[], selectedCourse=null;
-    let tjaMergeLinesActive=true, visualFocusActive = false, hideBars=false, controlsCollapsed=false;
+    let tjaMergeLinesActive=true, visualFocusActive = false, hideBars=false, controlsCollapsed=false, showBalloonDetail = true;
 
+    function isInsideSlider(elements, idx) {
+        let depth = 0;
+        for (let i = 0; i <= idx; i++) {
+            const el = elements[i];
+            if (el.sliderRole === 'head') depth++;
+            if (el.sliderRole === 'tail') depth--;
+        }
+        return depth > 0;
+    }
     function replaceChineseNotes(str) {
         let result = str;
         for (const [ch, replacement] of Object.entries(chineseNoteMap)) {
-            if (ch.length === 1 && !'lL'.includes(ch)) result = result.replaceAll(ch, replacement);
+            if (ch.length === 1 && !'lL-+= '.includes(ch)) result = result.replaceAll(ch, replacement);
         }
         return result;
     }
     function normalize(s){ return s.replace(/（/g,'(').replace(/）/g,')').replace(/【/g,'[').replace(/】/g,']').replace(/｛/g,'{').replace(/｝/g,'}').replace(/，/g,' ').replace(/,/g,' '); }
-    function getGapFactor(a,b){ let r=1; const set=new Set(); for(let i=1;i<b.length;i++) if(typeof b[i]==='object'&&b[i].id!=null) set.add(b[i].id); for(let i=1;i<a.length;i++) if(typeof a[i]==='object'&&a[i].id!=null&&set.has(a[i].id)) r*=a[i].value; return r; }
+    function getGapFactor(a, b) {
+        let r = 1;
+        const set = new Set();
+        for (let i = 1; i < b.length; i++) if (typeof b[i] === 'object' && b[i].id != null) set.add(b[i].id);
+        for (let i = 1; i < a.length; i++) if (typeof a[i] === 'object' && a[i].id != null && set.has(a[i].id)) r *= a[i].value;
+        return r;
+    }
 
-    // ox模式解析 (支持手动小节线)
+    // ox模式解析 (支持 - = + 作为长条身/气球身)
     function parseGlobal(input) {
-        const norm = normalize(input), rows=[], cur=[], typeStack=[], factStack=[];
-        let pendHigh=false, pendBar=false, bracketIdCounter=0;
-        const curlLeftStack=[], sliderStack=[];
-        let globalIdx=0; const curlIntervals=[];
-        function push(e){ cur.push(e); globalIdx++; if(globalIdx>1) curlIntervals.push(1); }
-        function applyCurl(l,f){ const r=globalIdx-1; if(r<l) return; for(let i=l;i<=r-1;i++) if(i<curlIntervals.length) curlIntervals[i]*=f; }
-        for(let i=0;i<norm.length;i++){
-            const ch=norm[i];
-            if(ch==='\n'){ while(sliderStack.length) sliderStack.pop().el.hasTail=false; if(cur.length) rows.push(cur); cur=[]; pendHigh=pendBar=false; continue; }
-            if(ch==='*'){ pendHigh=true; continue; }
-            if(ch==='|'||ch==='/'||ch==='\\'){ pendBar=true; continue; }
-            if('oxOXc '.includes(ch)){
-                const el={type:ch===' '?'space':ch, pathFactors:[1,...factStack], highlight:false, hasBar:false, curlGapToNext:1};
-                if(pendHigh){ if(ch!==' ') el.highlight=true; pendHigh=false; }
-                if(pendBar){ el.hasBar=true; pendBar=false; }
-                push(el); continue;
+        const norm = normalize(input);
+        const rows = [];
+        let cur = [];
+        const typeStack = [];
+        const factStack = [];
+        let pendHigh = false;
+        let pendBar = false;
+        let bracketIdCounter = 0;
+        const curlLeftStack = [];
+        const sliderStack = [];
+        const curlIntervals = [];
+        let globalIdx = 0;
+
+        function push(e) {
+            cur.push(e);
+            globalIdx++;
+            if (globalIdx > 1) curlIntervals.push(1);
+        }
+
+        function applyCurl(left, factor) {
+            const right = globalIdx - 1;
+            if (right < left) return;
+            for (let i = left; i <= right - 1; i++) {
+                if (i < curlIntervals.length) curlIntervals[i] *= factor;
             }
-            if(ch==='l'||ch==='L'){
-                const isBig=ch==='L';
-                const el={type:ch, pathFactors:[1,...factStack], highlight:false, hasBar:false, curlGapToNext:1, isSlider:true, isBig};
-                if(pendHigh){ el.highlight=true; pendHigh=false; }
-                if(pendBar){ el.hasBar=true; pendBar=false; }
-                if(sliderStack.length===0||sliderStack[sliderStack.length-1].el.type!==ch){
-                    const id=bracketIdCounter++; el.sliderRole='head'; el.sliderId=id; el.hasTail=true;
-                    sliderStack.push({el, id}); push(el);
-                }else{
-                    const head=sliderStack.pop(); el.sliderRole='tail'; el.pairId=head.id; push(el);
-                }
+        }
+
+        for (let i = 0; i < norm.length; i++) {
+            const ch = norm[i];
+            if (ch === '\n') {
+                while (sliderStack.length) sliderStack.pop().el.hasTail = false;
+                if (cur.length) rows.push(cur);
+                cur = [];
+                pendHigh = pendBar = false;
                 continue;
             }
-            if(ch==='('){ typeStack.push('('); factStack.push({value:2/3, id:bracketIdCounter++}); }
-            else if(ch==='['){ typeStack.push('['); factStack.push({value:1/2, id:bracketIdCounter++}); }
-            else if(ch==='{'){ curlLeftStack.push({startGlobalIndex:globalIdx}); }
-            if(ch===')'||ch===']'||ch==='}'){
-                if(ch==='}'){
-                    let j=i+1,num=''; while(j<norm.length&&(norm[j].match(/[0-9.]/)||norm[j]==='.')){ if(norm[j]!=='\n') num+=norm[j]; j++; }
-                    const y=parseFloat(num)||16, f=16/y;
-                    if(curlLeftStack.length){
-                        const top=curlLeftStack[curlLeftStack.length-1], lg=top.startGlobalIndex;
-                        if(globalIdx-lg===1&&curlLeftStack.length>=2){ const s=curlLeftStack[curlLeftStack.length-2]; applyCurl(s.startGlobalIndex,f); curlLeftStack.splice(curlLeftStack.length-2,1); }
-                        else{ applyCurl(lg,f); curlLeftStack.pop(); }
+            if (ch === '*') { pendHigh = true; continue; }
+            if (ch === '|' || ch === '/' || ch === '\\') { pendBar = true; continue; }
+            if ('oxOXc -+=lL'.includes(ch) || ch === ' ' || ch === 'l' || ch === 'L') {
+                let elType;
+                if (ch === ' ') elType = 'space';
+                else if (ch === '-') elType = 'sliderBody';
+                else if (ch === '=') elType = 'bigSliderBody';
+                else if (ch === '+') elType = 'balloonBody';
+                else elType = ch;
+
+                const el = {
+                    type: elType,
+                    pathFactors: [1, ...factStack],
+                    highlight: false,
+                    hasBar: false,
+                    curlGapToNext: 1
+                };
+                if (pendHigh) { if (ch !== ' ') el.highlight = true; pendHigh = false; }
+                if (pendBar) { el.hasBar = true; pendBar = false; }
+
+                if (ch === 'l' || ch === 'L') {
+                    const isBig = ch === 'L';
+                    el.isSlider = true;
+                    el.isBig = isBig;
+                    if (sliderStack.length === 0 || sliderStack[sliderStack.length - 1].el.type !== ch) {
+                        const id = bracketIdCounter++;
+                        el.sliderRole = 'head';
+                        el.sliderId = id;
+                        el.hasTail = true;
+                        sliderStack.push({ el, id });
+                    } else {
+                        const head = sliderStack.pop();
+                        el.sliderRole = 'tail';
+                        el.pairId = head.id;
                     }
-                }else{
-                    const exp=ch===')'?'(':'['; const idx=typeStack.lastIndexOf(exp);
-                    if(idx!==-1){ typeStack.splice(idx,1); factStack.splice(idx,1); }
+                }
+                push(el);
+                continue;
+            }
+            if (ch === '(') {
+                typeStack.push('(');
+                factStack.push({ value: 2 / 3, id: bracketIdCounter++ });
+            } else if (ch === '[') {
+                typeStack.push('[');
+                factStack.push({ value: 1 / 2, id: bracketIdCounter++ });
+            } else if (ch === '{') {
+                curlLeftStack.push({ startGlobalIndex: globalIdx });
+            }
+            if (ch === ')' || ch === ']' || ch === '}') {
+                if (ch === '}') {
+                    let j = i + 1;
+                    let num = '';
+                    while (j < norm.length && (norm[j].match(/[0-9.]/) || norm[j] === '.')) {
+                        if (norm[j] !== '\n') num += norm[j];
+                        j++;
+                    }
+                    const y = parseFloat(num) || 16;
+                    const f = 16 / y;
+                    if (curlLeftStack.length) {
+                        const top = curlLeftStack[curlLeftStack.length - 1];
+                        const left = top.startGlobalIndex;
+                        if (globalIdx - left === 1 && curlLeftStack.length >= 2) {
+                            const second = curlLeftStack[curlLeftStack.length - 2];
+                            applyCurl(second.startGlobalIndex, f);
+                            curlLeftStack.splice(curlLeftStack.length - 2, 1);
+                        } else {
+                            applyCurl(left, f);
+                            curlLeftStack.pop();
+                        }
+                    }
+                    i = j - 1;
+                } else {
+                    const expected = ch === ')' ? '(' : '[';
+                    const idx = typeStack.lastIndexOf(expected);
+                    if (idx !== -1) {
+                        typeStack.splice(idx, 1);
+                        factStack.splice(idx, 1);
+                    }
                 }
                 continue;
             }
-            pendHigh=pendBar=false;
+            pendHigh = pendBar = false;
         }
-        while(sliderStack.length){ sliderStack.pop().el.hasTail=false; }
-        if(cur.length) rows.push(cur);
-        let idx=0; for(const r of rows) for(let i=0;i<r.length;i++){ r[i].curlGapToNext=idx<curlIntervals.length?curlIntervals[idx++]:1; }
-        return rows.filter(r=>r.length>0);
+        while (sliderStack.length) sliderStack.pop().el.hasTail = false;
+        if (cur.length) rows.push(cur);
+        let idx = 0;
+        for (const r of rows) {
+            for (let i = 0; i < r.length; i++) {
+                r[i].curlGapToNext = idx < curlIntervals.length ? curlIntervals[idx++] : 1;
+            }
+        }
+        return rows.filter(r => r.length > 0);
     }
 
-    function buildRowSliders(elements){
-        const sliders=[];
-        for(let i=0;i<elements.length;i++){
-            const el=elements[i];
-            if(!el.isSlider||el.sliderRole!=='head') continue;
-            const headIdx=i, isBig=el.isBig;
-            let tailIdx=-1;
-            for(let j=i+1;j<elements.length;j++){
-                if(elements[j].isSlider&&elements[j].sliderRole==='tail'&&elements[j].pairId===el.sliderId){ tailIdx=j; break; }
+    function buildRowSliders(elements) {
+        const sliders = [];
+        const balloons = [];
+        const sliderMap = new Map();
+        const balloonMap = new Map();
+
+        for (let i = 0; i < elements.length; i++) {
+            const el = elements[i];
+            if (el.isSlider) {
+                const id = el.sliderId ?? el.pairId;
+                if (!sliderMap.has(id)) {
+                    sliderMap.set(id,{ sliderId:id, headIdx:-1, tailIdx:-1, isBig:el.isBig });
+                }
+                const obj = sliderMap.get(id);
+                if (el.sliderRole === 'head') obj.headIdx = i;
+                if (el.sliderRole === 'tail') obj.tailIdx = i;
             }
-            if(tailIdx===-1&&el.hasTail){
-                let last=headIdx;
-                for(let j=headIdx+1;j<elements.length;j++){ if(elements[j].type==='space') last=j; else break; }
-                tailIdx=last;
-            }else if(tailIdx===-1) tailIdx=headIdx;
-            sliders.push({headIdx, tailIdx, isBig});
+            if (el.isBalloon) {
+                const id = el.sliderId ?? el.pairId;
+                if (!balloonMap.has(id)) {
+                    balloonMap.set(id,{ sliderId:id, headIdx:-1, tailIdx:-1, isBalloon:true });
+                }
+                const obj = balloonMap.get(id);
+                if (el.sliderRole === 'head') obj.headIdx = i;
+                if (el.sliderRole === 'tail') obj.tailIdx = i;
+            }
         }
-        return sliders;
+        sliderMap.forEach(v => sliders.push(v));
+        balloonMap.forEach(v => balloons.push(v));
+        return { sliders, balloons };
     }
 
-    function layoutLine(elements, hsScale, baseGap){
-        const pos=[]; let x=0;
-        for(let i=0;i<elements.length;i++){ pos.push(x); if(i<elements.length-1) x+=DEFAULT_GAP*getGapFactor(elements[i].pathFactors,elements[i+1].pathFactors)*hsScale*(elements[i].curlGapToNext||1); }
-        let minX=Infinity, maxX=-Infinity, first=IMG_SMALL/2;
-        elements.forEach((el,idx)=>{
-            if(el.type==='space'){ if(pos[idx]<minX) minX=pos[idx]; if(pos[idx]+IMG_SMALL>maxX) maxX=pos[idx]+IMG_SMALL; return; }
-            if(el.isSlider){
-                const isBig=el.isBig, hSize=isBig?IMG_BIG:IMG_SMALL, tW=isBig?82:53;
-                if(el.sliderRole==='head'){ const cx=pos[idx]+IMG_SMALL/2; if(cx-hSize/2<minX) minX=cx-hSize/2; if(cx+hSize/2>maxX) maxX=cx+hSize/2; }
-                else if(el.sliderRole==='tail'){ const tx=pos[idx]+IMG_SMALL/2; if(tx<minX) minX=tx; if(tx+tW>maxX) maxX=tx+tW; }
-                return;
+    function getElementBounds(el, pos) {
+        if (el.type === 'space') {
+            return { left: pos, right: pos + IMG_SMALL };
+        }
+        if (el.type === 'sliderBody' || el.type === 'bigSliderBody' || el.type === 'balloonBody') {
+            return { left: pos, right: pos + IMG_SMALL };
+        }
+        if (el.isSlider) {
+            const isBig = el.isBig;
+            if (el.sliderRole === 'head') {
+                const ox = isBig ? -(IMG_BIG - IMG_SMALL) / 2 : 0;
+                const size = isBig ? IMG_BIG : IMG_SMALL;
+                return { left: pos + ox, right: pos + ox + size };
+            } else if (el.sliderRole === 'tail') {
+                if (isBig) {
+                    const ox = -(IMG_BIG - IMG_SMALL) / 2;
+                    return { left: pos + ox, right: pos + ox + IMG_BIG };
+                } else {
+                    return { left: pos, right: pos + IMG_SMALL };
+                }
             }
-            const isBig=el.type==='O'||el.type==='X', size=el.type==='c'?IMG_BALLOON_W:(isBig?IMG_BIG:IMG_SMALL);
-            const ox=el.type==='c'?-0.5:(isBig?-(IMG_BIG-IMG_SMALL)/2:0);
-            const left=pos[idx]+ox; if(left<minX) minX=left; if(left+size>maxX) maxX=left+size;
-            if(idx===0) first=pos[idx]+IMG_SMALL/2;
+        }
+        if (el.isBalloon) {
+            if (el.sliderRole === 'head') {
+                return { left: pos - 0.5, right: pos - 0.5 + IMG_BALLOON_W };
+            } else if (el.sliderRole === 'tail') {
+                return { left: pos, right: pos + IMG_SMALL };
+            }
+        }
+        const isBig = el.type === 'O' || el.type === 'X';
+        const ox = isBig ? -(IMG_BIG - IMG_SMALL) / 2 : 0;
+        const size = isBig ? IMG_BIG : IMG_SMALL;
+        return { left: pos + ox, right: pos + ox + size };
+    }
+
+    function layoutLine(elements, hsScale, baseGap) {
+        const pos = [];
+        const { sliders, balloons } = buildRowSliders(elements);
+        const insideSet = new Set();
+        const headSet = new Set();
+        const tailSet = new Set();
+        const tailInfoMap = new Map();
+
+        for (const s of sliders) {
+            headSet.add(s.headIdx);
+            tailSet.add(s.tailIdx);
+            tailInfoMap.set(s.tailIdx, { headIdx: s.headIdx, tailIdx: s.tailIdx });
+            for (let i = s.headIdx + 1; i < s.tailIdx; i++) {
+                insideSet.add(i);
+            }
+        }
+        for (const b of balloons) {
+            headSet.add(b.headIdx);
+            tailSet.add(b.tailIdx);
+            tailInfoMap.set(b.tailIdx, { headIdx: b.headIdx, tailIdx: b.tailIdx });
+            for (let i = b.headIdx + 1; i < b.tailIdx; i++) {
+                insideSet.add(i);
+            }
+        }
+
+        let x = 0;
+        let prevGapSource = null;
+        const unitGap = (baseGap || DEFAULT_GAP) * hsScale;
+
+        for (let i = 0; i < elements.length; i++) {
+            const el = elements[i];
+            const isHead = headSet.has(i);
+            const isTail = tailSet.has(i);
+            const isInside = insideSet.has(i);
+
+            if (isHead) {
+                if (prevGapSource) {
+                    const gap = (baseGap || DEFAULT_GAP) * getGapFactor(prevGapSource.pathFactors, el.pathFactors) * hsScale * (prevGapSource.curlGapToNext || 1);
+                    x += gap;
+                }
+                pos.push(x);
+                prevGapSource = el;
+                continue;
+            }
+
+            if (isInside) {
+                const pair = [...tailInfoMap.values()].find(p => i > p.headIdx && i < p.tailIdx);
+                if (pair) {
+                    const headPos = pos[pair.headIdx];
+                    pos.push(headPos + (i - pair.headIdx) * unitGap);
+                } else {
+                    pos.push(x);
+                }
+                continue;
+            }
+
+            if (isTail) {
+                const pair = tailInfoMap.get(i);
+                if (pair) {
+                    const headPos = pos[pair.headIdx];
+                    x = headPos + (pair.tailIdx - pair.headIdx) * unitGap;
+                }
+                pos.push(x);
+                prevGapSource = el;
+                continue;
+            }
+
+            if (prevGapSource) {
+                const gap = (baseGap || DEFAULT_GAP) * getGapFactor(prevGapSource.pathFactors, el.pathFactors) * hsScale * (prevGapSource.curlGapToNext || 1);
+                x += gap;
+            }
+            pos.push(x);
+            prevGapSource = el;
+        }
+
+        let minX = Infinity;
+        let maxX = -Infinity;
+        let first = IMG_SMALL / 2;
+        elements.forEach((el, idx) => {
+            const bounds = getElementBounds(el, pos[idx]);
+            if (bounds.left < minX) minX = bounds.left;
+            if (bounds.right > maxX) maxX = bounds.right;
+            if (idx === 0) { first = pos[idx] + IMG_SMALL / 2; }
         });
-        if(minX===Infinity){ if(baseGap&&elements.length===1&&elements[0].type==='space') return {elements, positions:[0], minX:0, maxX:baseGap*hsScale, width:baseGap*hsScale, height:FIXED_HEIGHT, firstNoteCanvasX:IMG_SMALL/2, firstNoteCanvasY:100}; minX=0; maxX=IMG_SMALL; }
-        return {elements, positions:pos, minX, maxX, width:maxX-minX, height:FIXED_HEIGHT, firstNoteCanvasX:first-minX, firstNoteCanvasY:100};
+        if (!isFinite(minX)) { minX = 0; maxX = IMG_SMALL; }
+        return {
+            elements,
+            positions: pos,
+            minX,
+            maxX,
+            width: maxX - minX,
+            height: FIXED_HEIGHT,
+            firstNoteCanvasX: first - minX,
+            firstNoteCanvasY: 100
+        };
     }
 
     function invertType(t,inv){ if(!inv||t==='c') return t; return {o:'x',x:'o',O:'X',X:'O'}[t]||t; }
     function smallifyType(t){ return t==='O'?'o':t==='X'?'x':t; }
 
-    function drawLine(canvas, layout, doInvert, doSmallify, randomRow, hideBars, sliders){
-        const ctx=canvas.getContext('2d');
-        canvas.width=Math.ceil(layout.width); canvas.height=FIXED_HEIGHT;
-        ctx.clearRect(0,0,canvas.width,canvas.height);
-        // 小节线
-        for(let i=0;i<layout.elements.length;i++){
-            const el=layout.elements[i];
-            if(!el.hasBar||hideBars) continue;
-            const cx=layout.positions[i]+IMG_SMALL/2-layout.minX;
-            if(barImage.complete&&barImage.naturalWidth>0){ const bw=barImage.naturalWidth||5,bh=barImage.naturalHeight||200; ctx.drawImage(barImage,cx-bw/2,100-bh/2,bw,bh); }
-        }
-        ctx.save(); ctx.translate(-layout.minX,0);
-        // 长条 (底层)
-        if(sliders&&sliders.length){
-            for(const s of sliders){
-                const headX=layout.positions[s.headIdx]+IMG_SMALL/2, tailX=layout.positions[s.tailIdx]+IMG_SMALL/2;
-                const isBig=s.isBig, midH=isBig?160:106, tailW=isBig?82:53, tailH=isBig?160:106;
-                const tImg=isBig?imgL3Big:imgL3;
-                if(tImg&&loaded[isBig?'ll3':'l3']&&tImg.complete) ctx.drawImage(tImg, tailX, 100-tailH/2, tailW, tailH);
-                const mImg=isBig?imgL2Big:imgL2;
-                if(mImg&&loaded[isBig?'ll2':'l2']&&mImg.complete&&headX<tailX) ctx.drawImage(mImg, headX, 100-midH/2, tailX-headX, midH);
-                const hImg=isBig?imgL1Big:imgL1, hSize=isBig?IMG_BIG:IMG_SMALL;
-                if(hImg&&loaded[isBig?'ll1':'l1']&&hImg.complete) ctx.drawImage(hImg, headX-hSize/2, 100-hSize/2, hSize, hSize);
+    function getRowBarRange(layout) {
+        const bars = [];
+
+        layout.elements.forEach((el, idx) => {
+            if (el.hasBar) {
+                bars.push(
+                    layout.positions[idx] + IMG_SMALL / 2
+                );
             }
+        });
+
+        if (bars.length === 0) {
+            return {
+                left: layout.minX,
+                right: layout.maxX
+            };
         }
-        // 普通音符 (上层)
-        for(let i=layout.elements.length-1;i>=0;i--){
-            const el=layout.elements[i];
-            if(!'oxOXc'.includes(el.type)||el.isSlider) continue;
-            let dt=el.type; if(randomRow&&randomRow[i]) dt=invertType(dt,true); dt=invertType(dt,doInvert); if(doSmallify&&dt!=='c') dt=smallifyType(dt);
-            let size,dx,dy,img;
-            if(dt==='c'){ size=IMG_BALLOON_W; dx=layout.positions[i]-0.5; dy=100-IMG_BALLOON_H/2; img=imgC; }
-            else{ const ib=dt==='O'||dt==='X'; size=ib?IMG_BIG:IMG_SMALL; dy=100-size/2; dx=ib?layout.positions[i]-(IMG_BIG-IMG_SMALL)/2:layout.positions[i]; img={o:imgOSmall,x:imgXSmall,O:imgOBig,X:imgXBig}[dt]; }
-            if(el.highlight){ ctx.shadowColor='white'; ctx.shadowBlur=20; }
-            if(img&&loaded[dt]&&img.complete&&img.naturalWidth>0){ if(dt==='c') ctx.drawImage(img,dx,dy,size,IMG_BALLOON_H); else ctx.drawImage(img,dx,dy,size,size); }
-            else{ ctx.save(); ctx.beginPath(); ctx.arc(dx+size/2,dy+(dt==='c'?IMG_BALLOON_H:size)/2,size*0.42,0,Math.PI*2); ctx.fillStyle={o:'#F84828',x:'#68c0c0',O:'#F84828',X:'#68c0c0',c:'#FFD700'}[dt]||'#aaa'; ctx.fill(); ctx.restore(); }
-            if(el.highlight){ ctx.shadowColor='transparent'; ctx.shadowBlur=0; }
-        }
-        ctx.restore();
+
+        return {
+                        
+            left: bars[0],
+                right:
+                    bars.length > 1
+                    ? bars[bars.length - 1]
+                    : layout.maxX
+
+        };
     }
 
-    // ----- TJA解析器 (稳健支持内联#SCROLL等指令) -----
-    // ----- TJA解析器 (每大行末尾自动添加小节线) -----
-     // ----- TJA解析器 (不自动添加行尾小节线) -----
-function parseTJA(text) {
-    const courses = [];
-    const lines = text.split(/\r?\n/);
-    let curCourse = null, inStart = false, b = 1, a = 1;
-    let buffer = '';
-    let globalTitle = '', curLevel = '';
-    const sliderStack = [];      // 改为存储 { el, isBig, isBalloon }
-    let sliderIdCounter = 0;
-    const mapDigit = { '0':' ', '1':'o', '2':'x', '3':'O', '4':'X', '7':'c' };
+    function drawLine(canvas, layout, doInvert, doSmallify, randomRow, hideBars, sliderData) {
+        const ctx = canvas.getContext('2d');
+        canvas.width = Math.ceil(layout.width);
+        canvas.height = FIXED_HEIGHT;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const processSegment = (seg) => {
-        if (!seg || !curCourse) return;
-        const n = seg.length;
-        const baseGap = DEFAULT_GAP * 16 * a * b / n;
-        const elements = [];
-        for (const ch of seg) {
-            if (ch === '5' || ch === '6') {
-                // 长条头
-                const isBig = ch === '6';
-                const el = { type: isBig ? 'L' : 'l', pathFactors: [1], hasBar: false, curlGapToNext: 1, isSlider: true, isBig, sliderRole: 'head' };
-                el.sliderId = sliderIdCounter++;
-                el.hasTail = true;
-                sliderStack.push({ el, isBig, isBalloon: false });
-                elements.push(el);
-            } else if (ch === '7') {
-                // 气球头
-                const el = { type: 'c', pathFactors: [1], hasBar: false, curlGapToNext: 1 };
-                sliderStack.push({ el: null, isBig: false, isBalloon: true });
-                elements.push(el);
-            } else if (ch === '8') {
-                if (sliderStack.length > 0) {
-                    const top = sliderStack.pop();
-                    if (top.isBalloon) {
-                        // 气球结束：生成一个占位空格，保持小节长度
-                        elements.push({ type: 'space', pathFactors: [1], hasBar: false, curlGapToNext: 1 });
-                    } else {
-                        // 长条结束：生成尾部元素
-                        const tailEl = { type: top.isBig ? 'L' : 'l', pathFactors: [1], hasBar: false, curlGapToNext: 1, isSlider: true, isBig: top.isBig, sliderRole: 'tail', pairId: top.el.sliderId };
-                        elements.push(tailEl);
-                    }
-                } else {
-                    // 多余的 8 当作空格
-                    elements.push({ type: 'space', pathFactors: [1], hasBar: false, curlGapToNext: 1 });
-                }
-            } else {
-                elements.push({ type: mapDigit[ch] || ' ', pathFactors: [1], hasBar: false, curlGapToNext: 1 });
+        for (let i = 0; i < layout.elements.length; i++) {
+            const el = layout.elements[i];
+            if (!el.hasBar || hideBars) continue;
+            const cx = layout.positions[i] + IMG_SMALL / 2 - layout.minX;
+            if (barImage.complete && barImage.naturalWidth > 0) {
+                const bw = barImage.naturalWidth || 5;
+                const bh = barImage.naturalHeight || 200;
+                ctx.drawImage(barImage, cx - bw / 2, 100 - bh / 2, bw, bh);
             }
         }
-        if (elements.length && !elements[0].isSlider) elements[0].hasBar = true;
-        curCourse.rows.push({ elements, baseGap });
-    };
+
+        const { sliders = [], balloons = [] } = sliderData || {};
+        const ignoredIndices = new Set();
+        for (const pair of [...sliders, ...balloons]) {
+            if (pair.headIdx === -1 || pair.tailIdx === -1) continue;
+            for (let i = pair.headIdx + 1; i < pair.tailIdx; i++) {
+                ignoredIndices.add(i);
+            }
+        }
+
+        const items = [];
+
+        for (let i = 0; i < layout.elements.length; i++) {
+            const el = layout.elements[i];
+            if (el.type === 'space' || el.sliderRole === 'tail') continue;
+            if (ignoredIndices.has(i)) continue;
+            if (el.type === 'sliderBody' || el.type === 'bigSliderBody' || el.type === 'balloonBody') continue;
+
+            let dt = el.type;
+            if (randomRow && randomRow[i]) { dt = invertType(dt, true); }
+            dt = invertType(dt, doInvert);
+            if (doSmallify && dt !== 'c') { dt = smallifyType(dt); }
+
+            const isBig = dt === 'O' || dt === 'X';
+            const size = dt === 'c' ? IMG_BALLOON_W : (isBig ? IMG_BIG : IMG_SMALL);
+            const ox = dt === 'c' ? -0.5 : (isBig ? -(IMG_BIG - IMG_SMALL) / 2 : 0);
+            const x = layout.positions[i] + ox;
+            const img = dt === 'c' ? imgC1 : { o: imgOSmall, x: imgXSmall, O: imgOBig, X: imgXBig }[dt];
+
+            items.push({
+                order: i,
+                draw: () => {
+                    ctx.save();
+                    ctx.translate(-layout.minX, 0);
+                    if (el.highlight) { ctx.shadowColor = 'white'; ctx.shadowBlur = 20; }
+                    if (img && img.complete) {
+                        if (dt === 'c') {
+                            ctx.drawImage(img, x, 100 - IMG_BALLOON_H / 2, size, IMG_BALLOON_H);
+                        } else {
+                            ctx.drawImage(img, x, 100 - size / 2, size, size);
+                        }
+                    }
+                    if (el.highlight) { ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; }
+                    ctx.restore();
+                }
+            });
+        }
+
+        for (const s of sliders) {
+            const isBig = s.isBig;
+            const hSize = isBig ? IMG_BIG : IMG_SMALL;
+            const midH = isBig ? 160 : 106;
+            const tSize = isBig ? IMG_BIG : IMG_SMALL;
+            const hImg = isBig ? imgL1Big : imgL1;
+            const mImg = isBig ? imgL2Big : imgL2;
+            const tImg = isBig ? imgL3Big : imgL3;
+            const headOnly = s.headIdx !== -1 && s.tailIdx === -1;
+            const tailOnly = s.headIdx === -1 && s.tailIdx !== -1;
+
+            if (headOnly) {
+
+                const headX =
+                    layout.positions[s.headIdx] + IMG_SMALL / 2;
+
+                items.push({
+                    order: s.headIdx,
+                    draw: () => {
+
+                        const range =
+                            getRowBarRange(layout);
+
+                        ctx.save();
+                        ctx.translate(-layout.minX, 0);
+
+                        ctx.drawImage(
+                            mImg,
+                            headX,
+                            100 - midH / 2,
+                            range.right - headX,
+                            midH
+                        );
+
+                        ctx.drawImage(
+                            hImg,
+                            headX - hSize / 2,
+                            100 - hSize / 2,
+                            hSize,
+                            hSize
+                        );
+
+                        ctx.restore();
+                    }
+                });
+
+                continue;
+            }
+            if (tailOnly) {
+
+                const tailX =
+                    layout.positions[s.tailIdx] + IMG_SMALL / 2;
+
+                items.push({
+                    order: s.tailIdx,
+                    draw: () => {
+
+                        const range =
+                            getRowBarRange(layout);
+
+                        ctx.save();
+                        ctx.translate(-layout.minX, 0);
+
+                        ctx.drawImage(
+                            mImg,
+                            range.left,
+                            100 - midH / 2,
+                            tailX - range.left,
+                            midH
+                        );
+
+                        ctx.drawImage(
+                            tImg,
+                            tailX - tSize / 2,
+                            100 - tSize / 2,
+                            tSize,
+                            tSize
+                        );
+
+                        ctx.restore();
+                    }
+                });
+
+                continue;
+            }
+            if (s.headIdx !== -1 && s.tailIdx !== -1) {
+                const headX = layout.positions[s.headIdx] + IMG_SMALL / 2;
+                const tailX = layout.positions[s.tailIdx] + IMG_SMALL / 2;
+                items.push({
+                    order: s.headIdx,
+                    draw: () => {
+                        ctx.save();
+                        ctx.translate(-layout.minX, 0);
+                        ctx.drawImage(hImg, headX - hSize / 2, 100 - hSize / 2, hSize, hSize);
+                        ctx.restore();
+                    }
+                });
+                items.push({
+                    order: s.headIdx + 1,
+                    draw: () => {
+                        ctx.save();
+                        ctx.translate(-layout.minX, 0);
+                        ctx.drawImage(mImg, headX, 100 - midH / 2, tailX - headX, midH);
+                        ctx.restore();
+                    }
+                });
+                items.push({
+                    order: s.tailIdx,
+                    draw: () => {
+                        ctx.save();
+                        ctx.translate(-layout.minX, 0);
+                        ctx.drawImage(tImg, tailX - tSize / 2, 100 - tSize / 2, tSize, tSize);
+                        ctx.restore();
+                    }
+                });
+            }
+        }
+        if (layout.crossSliders) {
+
+                        
+            for (const cs of layout.crossSliders) {
+
+                    const range =
+                        getRowBarRange(layout);
+
+if (cs.isBalloon) {
+
+    if (cs.type === "middle") {
+
+        items.push({
+            order: -9999,
+            draw: () => {
+
+                ctx.save();
+                ctx.translate(-layout.minX, 0);
+
+                ctx.globalAlpha = 0.7;
+
+                ctx.drawImage(
+                    imgC2,
+                    range.left,
+                    76,
+                    range.right - range.left,
+                    48
+                );
+
+                ctx.globalAlpha = 1;
+
+                ctx.restore();
+            }
+        });
+    }
+
+    continue;
+}
+
+
+                if (cs.type !== 'middle')
+                    continue;
+
+                const mImg =
+                    cs.isBig ? imgL2Big : imgL2;
+
+                const midH =
+                    cs.isBig ? 160 : 106;
+
+                items.push({
+
+                    order: -9999,
+
+                    draw: () => {
+
+                        ctx.save();
+                        ctx.translate(-layout.minX, 0);
+
+                        ctx.drawImage(
+                            mImg,
+                            range.left,
+                            100 - midH / 2,
+                            range.right - range.left,
+                            midH
+                        );
+
+                        ctx.restore();
+                    }
+                });
+            }
+        }
+        if (showBalloonDetail) {
+
+    for (const b of balloons) {
+
+        const headOnly =
+            b.headIdx !== -1 &&
+            b.tailIdx === -1;
+
+        const tailOnly =
+            b.headIdx === -1 &&
+            b.tailIdx !== -1;
+
+        if (headOnly) {
+
+            const headX =
+                layout.positions[b.headIdx] +
+                IMG_SMALL / 2;
+
+            const range =
+                getRowBarRange(layout);
+
+            items.push({
+
+                order: b.headIdx + 1,
+
+                draw: () => {
+
+                    ctx.save();
+                    ctx.translate(-layout.minX, 0);
+
+                    ctx.globalAlpha = 0.7;
+
+                    ctx.drawImage(
+                        imgC2,
+                        headX,
+                        76,
+                        range.right - headX,
+                        48
+                    );
+
+                    ctx.globalAlpha = 1;
+
+                    ctx.restore();
+                }
+            });
+
+            continue;
+        }
+
+        if (tailOnly) {
+
+            const tailX =
+                layout.positions[b.tailIdx] +
+                IMG_SMALL / 2;
+
+            const range =
+                getRowBarRange(layout);
+
+            items.push({
+
+                order: b.tailIdx,
+
+                draw: () => {
+
+                    ctx.save();
+                    ctx.translate(-layout.minX, 0);
+
+                    ctx.globalAlpha = 0.7;
+
+                    ctx.drawImage(
+                        imgC2,
+                        range.left,
+                        76,
+                        tailX - range.left,
+                        48
+                    );
+
+                    ctx.drawImage(
+                        imgC3,
+                        tailX - 24,
+                        76,
+                        48,
+                        48
+                    );
+
+                    ctx.globalAlpha = 1;
+
+                    ctx.restore();
+                }
+            });
+
+            continue;
+        }
+
+        if (b.headIdx === -1 || b.tailIdx === -1)
+            continue;
+
+        const headX =
+            layout.positions[b.headIdx] +
+            IMG_SMALL / 2;
+
+        const tailX =
+            layout.positions[b.tailIdx] +
+            IMG_SMALL / 2;
+
+        items.push({
+            order: b.headIdx + 0.5,
+            draw: () => {
+
+                ctx.save();
+                ctx.translate(-layout.minX, 0);
+
+                ctx.globalAlpha = 0.7;
+
+                ctx.drawImage(
+                    imgC2,
+                    headX,
+                    76,
+                    tailX - headX,
+                    48
+                );
+
+                ctx.globalAlpha = 1;
+
+                ctx.restore();
+            }
+        });
+
+        items.push({
+            order: b.tailIdx,
+            draw: () => {
+
+                ctx.save();
+                ctx.translate(-layout.minX, 0);
+
+                ctx.globalAlpha = 0.7;
+
+                ctx.drawImage(
+                    imgC3,
+                    tailX - 24,
+                    76,
+                    48,
+                    48
+                );
+
+                ctx.globalAlpha = 1;
+
+                ctx.restore();
+            }
+        });
+    }
+}
+        items.sort((a,b) => b.order - a.order);
+        for (const item of items) { item.draw(); }
+    }
+
+    // ----- TJA解析器 (修复跨小节长条/气球状态保持) -----
+    function parseTJA(text) {
+        const courses = [];
+        const lines = text.split(/\r?\n/);
+        let curCourse = null, inStart = false, b = 1, a = 1;
+        let buffer = '';
+        let globalTitle = '', curLevel = '';
+        const sliderStack = [];
+        const activeSliderTypes = []; // 'slider' | 'bigSlider' | 'balloon'
+        let sliderIdCounter = 0;
+        const mapDigit = { '0':'space', '1':'o', '2':'x', '3':'O', '4':'X', '7':'c' };
+
+        const processSegment = (seg) => {
+            if (!seg || !curCourse) return;
+            const n = seg.length;
+            const baseGap = DEFAULT_GAP * 16 * a * b / n;
+            const elements = [];
+
+            for (const ch of seg) {
+                if (ch === '5') {
+                    const isBig = false;
+                    const el = {
+                        type: 'l', pathFactors: [1], hasBar: false, curlGapToNext: 1,
+                        isSlider: true, isBig, sliderRole: 'head'
+                    };
+                    el.sliderId = sliderIdCounter++;
+                    el.hasTail = true;
+                    sliderStack.push({ el, isBig, isBalloon: false });
+                    activeSliderTypes.push('slider');
+                    elements.push(el);
+                } else if (ch === '6') {
+                    const isBig = true;
+                    const el = {
+                        type: 'L', pathFactors: [1], hasBar: false, curlGapToNext: 1,
+                        isSlider: true, isBig, sliderRole: 'head'
+                    };
+                    el.sliderId = sliderIdCounter++;
+                    el.hasTail = true;
+                    sliderStack.push({ el, isBig, isBalloon: false });
+                    activeSliderTypes.push('bigSlider');
+                    elements.push(el);
+                } else if (ch === '7') {
+                    const el = {
+                        type: 'c', pathFactors: [1], hasBar: false, curlGapToNext: 1,
+                        isBalloon: true, sliderRole: 'head'
+                    };
+                    el.sliderId = sliderIdCounter++;
+                    el.hasTail = true;
+                    sliderStack.push({ el, isBig: false, isBalloon: true });
+                    activeSliderTypes.push('balloon');
+                    elements.push(el);
+                } else if (ch === '8') {
+                    if (sliderStack.length > 0) {
+                        const top = sliderStack.pop();
+                        activeSliderTypes.pop();
+                        if (top.isBalloon) {
+                            elements.push({
+                                type: 'space', pathFactors: [1], hasBar: false, curlGapToNext: 1,
+                                isBalloon: true, sliderRole: 'tail',
+                                pairId: top.el.sliderId, sliderId: top.el.sliderId
+                            });
+                        } else {
+                            elements.push({
+                                type: top.isBig ? 'L' : 'l', pathFactors: [1], hasBar: false, curlGapToNext: 1,
+                                isSlider: true, isBig: top.isBig, sliderRole: 'tail',
+                                pairId: top.el.sliderId, sliderId: top.el.sliderId
+                            });
+                        }
+                    } else {
+                        elements.push({ type: 'space', pathFactors: [1], hasBar: false, curlGapToNext: 1 });
+                    }
+                } else if (ch === '0' && activeSliderTypes.length > 0) {
+                    const currentType = activeSliderTypes[activeSliderTypes.length - 1];
+                    let bodyType;
+                    if (currentType === 'bigSlider') bodyType = 'bigSliderBody';
+                    else if (currentType === 'balloon') bodyType = 'balloonBody';
+                    else bodyType = 'sliderBody';
+                    elements.push({
+                        type: bodyType, pathFactors: [1], hasBar: false, curlGapToNext: 1
+                    });
+                } else {
+                    elements.push({
+                        type: mapDigit[ch] || 'space', pathFactors: [1], hasBar: false, curlGapToNext: 1
+                    });
+                }
+            }
+            // 【修复点】不再在segment结束时清空sliderStack，允许跨小节
+            elements[0].hasBar = true;
+            console.log(
+                seg,
+                elements.map(e => e.type)
+            );
+            curCourse.rows.push({ elements, baseGap });
+        };
 
         const applyDirective = (dir) => {
             if (dir.startsWith('#MEASURE')) {
@@ -544,6 +1201,14 @@ function parseTJA(text) {
                     const val = parseFloat(dir.replace('#SCROLL', '').trim());
                     if (!isNaN(val)) b = val;
                 }
+            }
+        };
+
+        // 清理未闭合的slider（在course结束或#END时调用）
+        const clearUnclosedSliders = () => {
+            while (sliderStack.length) {
+                sliderStack.pop().el.hasTail = false;
+                activeSliderTypes.pop();
             }
         };
 
@@ -570,6 +1235,7 @@ function parseTJA(text) {
                         });
                     }
                 }
+                clearUnclosedSliders(); // 新难度开始，清理之前残留
                 if (curCourse && curCourse.rows.length) courses.push(curCourse);
                 const name = line.replace('COURSE:', '').trim();
                 curCourse = { name, rows: [], title: globalTitle, level: curLevel };
@@ -601,6 +1267,7 @@ function parseTJA(text) {
                         });
                     }
                 }
+                clearUnclosedSliders(); // 谱面结束，清理未闭合的长条/气球
                 inStart = false;
             } else if (inStart && curCourse) {
                 let idx = 0;
@@ -642,7 +1309,6 @@ function parseTJA(text) {
                         });
                     }
                 }
-                // 注意：此处不再追加任何行尾小节线
             } else if (!inStart && line.startsWith('LEVEL:')) {
                 curLevel = line.replace('LEVEL:', '').trim();
                 if (curCourse) curCourse.level = curLevel;
@@ -659,13 +1325,21 @@ function parseTJA(text) {
                 });
             }
         }
+        clearUnclosedSliders(); // 最终清理
         if (curCourse && curCourse.rows.length) courses.push(curCourse);
         return courses;
-    }   // ===== 前半部分结束，后续代码请补充完整版本中的剩余函数及初始化 =====
+    }
+
     // ----- TJA转ox文本 -----
     function convertTJAtoText(rows) {
         return rows.map(r => {
-            const n = r.elements.map(e => e.type === 'space' ? ' ' : e.type).join('');
+            const n = r.elements.map(e => {
+                if (e.type === 'space') return ' ';
+                if (e.type === 'sliderBody') return '-';
+                if (e.type === 'bigSliderBody') return '=';
+                if (e.type === 'balloonBody') return '+';
+                return e.type;
+            }).join('');
             const y = r.baseGap > 0 ? 1440 / r.baseGap : 16;
             if (Math.abs(y - 16) < 0.001) return n;
             const s = Number.isInteger(y) ? y.toString() : y.toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
@@ -674,15 +1348,20 @@ function parseTJA(text) {
     }
 
     // ----- 合并短行 (TJA) -----
-     // ----- 合并短行 (TJA) -----
     function mergeTJARows(rows, hs) {
         const layouts = [];
         let group = { elements: [], positions: [], gapSum: 0, gapToNext: 0, rowCount: 0 };
         for (let r = 0; r < rows.length; r++) {
             const row = rows[r];
-            const sb = row.baseGap * hs;
-            const isSp = row.elements.length === 1 && row.elements[0].type === 'space';
-            const cur = isSp ? sb : sb * (row.elements.length - 1);
+            const sb = row.baseGap * hs;      
+            const isSp =
+                row.elements.length === 1 &&
+                row.elements[0].type === 'space';
+            const cur =
+                isSp
+                ? 0
+                : sb * (row.elements.length - 1);
+
             const gap = group.rowCount > 0 ? group.gapToNext : 0;
             if (group.rowCount === 0 || group.gapSum + gap + cur <= MAX_GAP_SUM) {
                 if (group.rowCount > 0) group.positions.push(group.positions[group.positions.length-1] + group.gapToNext);
@@ -697,39 +1376,25 @@ function parseTJA(text) {
                 group.gapToNext = sb;
                 group.rowCount++;
 
-                // 判断是否该结束当前组：下一行无法合并或已是最后一行
                 const nextRow = rows[r+1];
                 const nextSb = nextRow ? nextRow.baseGap * hs : 0;
                 const nextIsSp = nextRow ? (nextRow.elements.length === 1 && nextRow.elements[0].type === 'space') : false;
                 const nextCur = nextRow ? (nextIsSp ? nextSb : nextSb * (nextRow.elements.length - 1)) : 0;
-                const willOverflow = nextRow ? (group.gapSum + group.gapToNext + nextCur > MAX_GAP_SUM) : true;
+                let willOverflow = nextRow ? (group.gapSum + group.gapToNext + nextCur > MAX_GAP_SUM) : true;
 
                 if (!nextRow || willOverflow) {
-                    // 当前原始行是合并组的最后一行，追加小节线空音符
                     const lastPos = group.positions[group.positions.length-1] + sb;
                     group.positions.push(lastPos);
-                    group.elements.push({
-                        type: 'space',
-                        pathFactors: [1],
-                        hasBar: true,
-                        curlGapToNext: 1
-                    });
+                    group.elements.push({ type: 'space', pathFactors: [1], hasBar: true, curlGapToNext: 1 });
                     group.gapSum += sb;
                     layouts.push(buildLayoutFromGroup(group));
                     group = { elements: [], positions: [], gapSum: 0, gapToNext: 0, rowCount: 0 };
                 }
             } else {
-                // 当前组已满，先结束并加上小节线，再开始新组
                 const lastPos = group.positions[group.positions.length-1] + group.gapToNext;
                 group.positions.push(lastPos);
-                group.elements.push({
-                    type: 'space',
-                    pathFactors: [1],
-                    hasBar: true,
-                    curlGapToNext: 1
-                });
+                group.elements.push({ type: 'space', pathFactors: [1], hasBar: true, curlGapToNext: 1 });
                 layouts.push(buildLayoutFromGroup(group));
-
                 group = { elements: [], positions: [], gapSum: 0, gapToNext: 0, rowCount: 0 };
                 for (let i = 0; i < row.elements.length; i++) {
                     const el = { ...row.elements[i], hasBar: row.elements[i].hasBar && i === 0 };
@@ -741,17 +1406,10 @@ function parseTJA(text) {
                 group.gapSum = cur;
                 group.gapToNext = sb;
                 group.rowCount = 1;
-
-                // 如果这是最后一行，也要追加小节线
                 if (r === rows.length - 1) {
                     const lastPos2 = group.positions[group.positions.length-1] + sb;
                     group.positions.push(lastPos2);
-                    group.elements.push({
-                        type: 'space',
-                        pathFactors: [1],
-                        hasBar: true,
-                        curlGapToNext: 1
-                    });
+                    group.elements.push({ type: 'space', pathFactors: [1], hasBar: true, curlGapToNext: 1 });
                     layouts.push(buildLayoutFromGroup(group));
                     group = { elements: [], positions: [], gapSum: 0, gapToNext: 0, rowCount: 0 };
                 }
@@ -760,14 +1418,10 @@ function parseTJA(text) {
         if (group.rowCount > 0) {
             const lastPos = group.positions[group.positions.length-1] + group.gapToNext;
             group.positions.push(lastPos);
-            group.elements.push({
-                type: 'space',
-                pathFactors: [1],
-                hasBar: true,
-                curlGapToNext: 1
-            });
+            group.elements.push({ type: 'space', pathFactors: [1], hasBar: true, curlGapToNext: 1 });
             layouts.push(buildLayoutFromGroup(group));
         }
+        buildCrossLayoutSliders(layouts);
         return layouts;
     }
 
@@ -775,58 +1429,129 @@ function parseTJA(text) {
         const elements = group.elements, positions = group.positions;
         let minX = Infinity, maxX = -Infinity, first = IMG_SMALL / 2;
         elements.forEach((el, idx) => {
-            if (el.type === 'space') {
-                if (positions[idx] < minX) minX = positions[idx];
-                if (el.spaceWidth) maxX = Math.max(maxX, positions[idx] + el.spaceWidth);
-                else maxX = Math.max(maxX, positions[idx] + IMG_SMALL);
-                return;
-            }
-            if (el.isSlider) {
-                const isBig = el.isBig, hSize = isBig ? IMG_BIG : IMG_SMALL, tW = isBig ? 82 : 53;
-                if (el.sliderRole === 'head') {
-                    const cx = positions[idx] + IMG_SMALL / 2;
-                    if (cx - hSize/2 < minX) minX = cx - hSize/2;
-                    if (cx + hSize/2 > maxX) maxX = cx + hSize/2;
-                } else if (el.sliderRole === 'tail') {
-                    const tx = positions[idx] + IMG_SMALL / 2;
-                    if (tx < minX) minX = tx;
-                    if (tx + tW > maxX) maxX = tx + tW;
-                }
-                return;
-            }
-            const isBig = el.type === 'O' || el.type === 'X';
-            const size = el.type === 'c' ? IMG_BALLOON_W : (isBig ? IMG_BIG : IMG_SMALL);
-            const ox = el.type === 'c' ? -0.5 : (isBig ? -(IMG_BIG - IMG_SMALL)/2 : 0);
-            const left = positions[idx] + ox;
-            if (left < minX) minX = left;
-            if (left + size > maxX) maxX = left + size;
+            const bounds = getElementBounds(el, positions[idx]);
+            if (bounds.left < minX) minX = bounds.left;
+            if (bounds.right > maxX) maxX = bounds.right;
             if (idx === 0) first = positions[idx] + IMG_SMALL / 2;
         });
+        if (!isFinite(minX) || (positions.length > 0 && minX > positions[0])) {
+            minX = positions.length > 0 ? positions[0] : 0;
+        }
         if (minX === Infinity) { minX = 0; maxX = IMG_SMALL; }
-        return { elements, positions, minX, maxX, width: maxX - minX, height: FIXED_HEIGHT, firstNoteCanvasX: first - minX, firstNoteCanvasY: 100 };
+        return {
+            elements, positions,
+            crossSliders: [],
+            minX, maxX,
+            width: maxX - minX, height: FIXED_HEIGHT,
+            firstNoteCanvasX: first - minX, firstNoteCanvasY: 100
+        };
     }
+
+    function buildCrossLayoutSliders(layouts) {
+
+    const active = new Map();
+
+    layouts.forEach((layout, layoutIndex) => {
+
+        layout.crossSliders = [];
+
+        layout.elements.forEach((el) => {
+
+            if (!el.isSlider && !el.isBalloon)
+                return;
+
+            if (el.sliderRole === 'head') {
+
+                const id =
+                    el.sliderId ?? el.pairId;
+
+                active.set(id, {
+                    startLayout: layoutIndex,
+                    isBig: !!el.isBig,
+                    isBalloon: !!el.isBalloon
+                });
+
+            } else if (el.sliderRole === 'tail') {
+
+                const id =
+                    el.sliderId ?? el.pairId;
+
+                const info =
+                    active.get(id);
+
+                if (!info)
+                    return;
+
+                for (
+                    let p = info.startLayout;
+                    p <= layoutIndex;
+                    p++
+                ) {
+
+                    let type;
+
+                    if (p === info.startLayout)
+                        type = "start";
+                    else if (p === layoutIndex)
+                        type = "end";
+                    else
+                        type = "middle";
+
+                    layouts[p].crossSliders.push({
+                        sliderId: id,
+                        isBig: info.isBig,
+                        isBalloon: info.isBalloon,
+                        type
+                    });
+                }
+
+                active.delete(id);
+            }
+        });
+    });
+
+    // 未闭合长条/气球
+    active.forEach((info, id) => {
+
+        for (
+            let p = info.startLayout;
+            p < layouts.length;
+            p++
+        ) {
+
+            layouts[p].crossSliders.push({
+                sliderId: id,
+                isBig: info.isBig,
+                isBalloon: info.isBalloon,
+                type:
+                    p === info.startLayout
+                    ? "start"
+                    : "middle"
+            });
+        }
+    });
+}
 
     // ----- 难度按钮更新 -----
     function updateCourseButtons() {
-    courseContainer.innerHTML = '<span class="examples-label">难度选择：</span>';
-    tjaCourses.forEach(c => {
-        const btn = document.createElement('button');
-        btn.className = 'btn btn-example';
-        const lv = c.level ? c.level : '';
-        btn.textContent = c.name + (lv ? lv : '');
-        // 只有当前选中的难度才高亮
-        if (selectedCourse && selectedCourse.name === c.name && selectedCourse.level === c.level) {
-            btn.classList.add('active');
-        }
-        btn.addEventListener('click', () => {
-            selectedCourse = c;
-            updateCourseButtons();
-            render();
+        courseContainer.innerHTML = '<span class="examples-label">难度选择：</span>';
+        tjaCourses.forEach(c => {
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-example';
+            const lv = c.level ? c.level : '';
+            btn.textContent = c.name + (lv ? lv : '');
+            if (selectedCourse && selectedCourse.name === c.name && selectedCourse.level === c.level) {
+                btn.classList.add('active');
+            }
+            btn.addEventListener('click', () => {
+                selectedCourse = c;
+                updateCourseButtons();
+                render();
+            });
+            courseContainer.appendChild(btn);
         });
-        courseContainer.appendChild(btn);
-    });
-    courseContainer.style.display = tjaCourses.length ? 'flex' : 'none';
-}
+        courseContainer.style.display = tjaCourses.length ? 'flex' : 'none';
+    }
 
     function updateTjaModeUI() {
         document.querySelectorAll('.tja-only').forEach(e => e.style.display = tjaModeActive ? 'inline-flex' : 'none');
@@ -837,6 +1562,7 @@ function parseTJA(text) {
         legendBox.style.display = tjaModeActive ? 'none' : '';
         btnTJAtoText.style.display = tjaModeActive ? 'inline-flex' : 'none';
         if (btnEditMap) btnEditMap.style.display = tjaModeActive ? 'none' : '';
+        btnBalloonDetail.style.display = tjaModeActive ? 'inline-flex' : 'none';
     }
 
     let currentRowLayouts = [];
@@ -858,7 +1584,7 @@ function parseTJA(text) {
                     if (row.elements.length === 1 && row.elements[0].type === 'space') {
                         return layoutLine(row.elements, hsScale, row.baseGap);
                     }
-                    return layoutLine(row.elements, hsScale);
+                    return layoutLine(row.elements, hsScale, row.baseGap);
                 }).filter(l => l.elements.some(e => e.type !== 'space') || l.width > 0);
             }
         } else {
@@ -875,8 +1601,8 @@ function parseTJA(text) {
         if (mergeViewActive || backgroundMergeActive) {
             const rowCanvases = rowLayouts.map((l, i) => {
                 const c = document.createElement('canvas');
-                const sl = buildRowSliders(l.elements);
-                drawLine(c, l, doInvert, doSmallify, randomMap?.[i], hideBars, sl);
+                const sd = buildRowSliders(l.elements);
+                drawLine(c, l, doInvert, doSmallify, randomMap?.[i], hideBars, sd);
                 return { canvas: c, firstX: l.firstNoteCanvasX, firstY: 100 };
             });
             const maxFirstX = Math.max(...rowCanvases.map(r => r.firstX));
@@ -919,9 +1645,9 @@ function parseTJA(text) {
         } else {
             const maxFirstX = Math.max(...rowLayouts.map(l => l.firstNoteCanvasX));
             rowLayouts.forEach((l, i) => {
-                const sl = buildRowSliders(l.elements);
+                const sd = buildRowSliders(l.elements);
                 const orig = document.createElement('canvas');
-                drawLine(orig, l, doInvert, doSmallify, randomMap?.[i], hideBars, sl);
+                drawLine(orig, l, doInvert, doSmallify, randomMap?.[i], hideBars, sd);
                 const extra = maxFirstX - l.firstNoteCanvasX;
                 const final = document.createElement('canvas');
                 final.width = Math.ceil(extra + l.width);
@@ -942,10 +1668,8 @@ function parseTJA(text) {
         }
     }
 
-    // ----- 映射管理 -----
-    function loadUserMap() {
-        try { const d = localStorage.getItem('taikoUserMap'); userChineseMap = d ? JSON.parse(d) : {}; } catch (e) { userChineseMap = {}; }
-    }
+    // ----- 映射管理 (略，保持不变) -----
+    function loadUserMap() { try { const d = localStorage.getItem('taikoUserMap'); userChineseMap = d ? JSON.parse(d) : {}; } catch (e) { userChineseMap = {}; } }
     function saveUserMap(map) { localStorage.setItem('taikoUserMap', JSON.stringify(map)); userChineseMap = map; Object.assign(chineseNoteMap, userChineseMap); }
     async function loadChineseMap() {
         try {
@@ -1008,7 +1732,7 @@ function parseTJA(text) {
     });
     btnCancelMap.addEventListener('click', () => { mapModal.style.display = 'none'; });
 
-    // ----- 示例加载 -----
+    // ----- 示例加载 (略) -----
     async function loadExamples() {
         try {
             const r = await fetch('example/example.txt');
@@ -1065,20 +1789,19 @@ function parseTJA(text) {
             return await r.text();
         } catch (e) { return FALLBACK_TJA; }
     }
-   async function enterTJAMode() {
-    tjaModeActive = true;
-    btnModeSwitch.textContent = '切换到ox模式';
-    updateTjaModeUI();
-    const tjaContent = await loadExternalTJA();
-    textarea.value = tjaContent;
-    tjaCourses = parseTJA(tjaContent);
-    updateCourseButtons();
-    selectedCourse = tjaCourses.length ? tjaCourses[0] : null;
-    // TJA模式默认开启合并背景
-    backgroundMergeActive = true;
-    bgMergeCheckbox.checked = true;
-    render();
-}
+    async function enterTJAMode() {
+        tjaModeActive = true;
+        btnModeSwitch.textContent = '切换到ox模式';
+        updateTjaModeUI();
+        const tjaContent = await loadExternalTJA();
+        textarea.value = tjaContent;
+        tjaCourses = parseTJA(tjaContent);
+        updateCourseButtons();
+        selectedCourse = tjaCourses.length ? tjaCourses[0] : null;
+        backgroundMergeActive = true;
+        bgMergeCheckbox.checked = true;
+        render();
+    }
     function exitTJAMode(clear = true) {
         tjaModeActive = false;
         btnModeSwitch.textContent = '切换到TJA模式';
@@ -1101,16 +1824,19 @@ function parseTJA(text) {
         if (tjaModeActive) { const prev = selectedCourse ? selectedCourse.name : null; tjaCourses = parseTJA(textarea.value); updateCourseButtons(); selectedCourse = prev ? tjaCourses.find(c => c.name === prev) : (tjaCourses.length ? tjaCourses[0] : null); }
         render();
     });
-
+    btnBalloonDetail.addEventListener('click', () => {
+        showBalloonDetail = !showBalloonDetail;
+        btnBalloonDetail.classList.toggle('active', showBalloonDetail);
+        render();
+    });
     mergeViewCheckbox.addEventListener('change', () => {
-    mergeViewActive = mergeViewCheckbox.checked;
-    render();
-});
-bgMergeCheckbox.addEventListener('change', () => {
-    backgroundMergeActive = bgMergeCheckbox.checked;
-    render();
-});
-// 删除原有的互斥逻辑
+        mergeViewActive = mergeViewCheckbox.checked;
+        render();
+    });
+    bgMergeCheckbox.addEventListener('change', () => {
+        backgroundMergeActive = bgMergeCheckbox.checked;
+        render();
+    });
     invertToggle.addEventListener('click', () => { invertActive = !invertActive; invertToggle.classList.toggle('active', invertActive); render(); });
     btnRandom.addEventListener('click', () => {
         if (!currentRowLayouts.length) return;
@@ -1164,8 +1890,8 @@ bgMergeCheckbox.addEventListener('change', () => {
         const doInv = invertActive, doSmall = smallifyActive;
         const rowCanvases = currentRowLayouts.map((l, i) => {
             const c = document.createElement('canvas');
-            const sl = buildRowSliders(l.elements);
-            drawLine(c, l, doInv, doSmall, randomMap?.[i], hideBars, sl);
+            const sd = buildRowSliders(l.elements);
+            drawLine(c, l, doInv, doSmall, randomMap?.[i], hideBars, sd);
             return { canvas: c, firstX: l.firstNoteCanvasX, firstY: 100 };
         });
         const maxFirstX = Math.max(...rowCanvases.map(r => r.firstX));
