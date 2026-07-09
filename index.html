@@ -596,7 +596,7 @@ SCOREDIFF:100
 
             if (isHead) {
                 if (prevGapSource) {
-                    const gap = (baseGap || DEFAULT_GAP) * getGapFactor(prevGapSource.pathFactors, el.pathFactors) * hsScale * (prevGapSource.curlGapToNext || 1);
+                    const gap = (baseGap || DEFAULT_GAP) * (prevGapSource?.scrollFactor ?? 1) * getGapFactor(prevGapSource.pathFactors, el.pathFactors) * hsScale * (prevGapSource.curlGapToNext || 1);
                     x += gap;
                 }
                 pos.push(x);
@@ -627,7 +627,7 @@ SCOREDIFF:100
             }
 
             if (prevGapSource) {
-                const gap = (baseGap || DEFAULT_GAP) * getGapFactor(prevGapSource.pathFactors, el.pathFactors) * hsScale * (prevGapSource.curlGapToNext || 1);
+                const gap = (baseGap || DEFAULT_GAP) * (prevGapSource?.scrollFactor ?? 1) * getGapFactor(prevGapSource.pathFactors, el.pathFactors) * hsScale * (prevGapSource.curlGapToNext || 1);
                 x += gap;
             }
             pos.push(x);
@@ -1100,25 +1100,27 @@ if (cs.isBalloon) {
     function parseTJA(text) {
         const courses = [];
         const lines = text.split(/\r?\n/);
-        let curCourse = null, inStart = false, b = 1, a = 1;
-        let buffer = '';
+        let curCourse = null, inStart = false, currentScroll = 1, a = 1;
+        let buffer = [];
         let globalTitle = '', curLevel = '';
         const sliderStack = [];
         const activeSliderTypes = []; // 'slider' | 'bigSlider' | 'balloon'
         let sliderIdCounter = 0;
         const mapDigit = { '0':'space', '1':'o', '2':'x', '3':'O', '4':'X', '7':'c' };
 
-        const processSegment = (seg) => {
-            if (!seg || !curCourse) return;
-            const n = seg.length;
-            const baseGap = DEFAULT_GAP * 16 * a * b / n;
+        const processSegment = (tokens) => {
+            if (!tokens.length || !curCourse) return;
+            const n = tokens.length;
+            const baseGap = DEFAULT_GAP * 16 * a / n;
             const elements = [];
 
-            for (const ch of seg) {
+            for (const token of tokens) {
+                const ch = token.ch;
+                const scrollFactor = token.scrollFactor;
                 if (ch === '5') {
                     const isBig = false;
                     const el = {
-                        type: 'l', pathFactors: [1], hasBar: false, curlGapToNext: 1,
+                        type: 'l', pathFactors: [1], hasBar: false, curlGapToNext: 1, scrollFactor,
                         isSlider: true, isBig, sliderRole: 'head'
                     };
                     el.sliderId = sliderIdCounter++;
@@ -1129,7 +1131,7 @@ if (cs.isBalloon) {
                 } else if (ch === '6') {
                     const isBig = true;
                     const el = {
-                        type: 'L', pathFactors: [1], hasBar: false, curlGapToNext: 1,
+                        type: 'L', pathFactors: [1], hasBar: false, curlGapToNext: 1, scrollFactor,
                         isSlider: true, isBig, sliderRole: 'head'
                     };
                     el.sliderId = sliderIdCounter++;
@@ -1139,7 +1141,7 @@ if (cs.isBalloon) {
                     elements.push(el);
                 } else if (ch === '7') {
                     const el = {
-                        type: 'c', pathFactors: [1], hasBar: false, curlGapToNext: 1,
+                        type: 'c', pathFactors: [1], hasBar: false, curlGapToNext: 1, scrollFactor,
                         isBalloon: true, sliderRole: 'head'
                     };
                     el.sliderId = sliderIdCounter++;
@@ -1153,19 +1155,19 @@ if (cs.isBalloon) {
                         activeSliderTypes.pop();
                         if (top.isBalloon) {
                             elements.push({
-                                type: 'space', pathFactors: [1], hasBar: false, curlGapToNext: 1,
+                                type: 'space', pathFactors: [1], hasBar: false, curlGapToNext: 1, scrollFactor,
                                 isBalloon: true, sliderRole: 'tail',
                                 pairId: top.el.sliderId, sliderId: top.el.sliderId
                             });
                         } else {
                             elements.push({
-                                type: top.isBig ? 'L' : 'l', pathFactors: [1], hasBar: false, curlGapToNext: 1,
+                                type: top.isBig ? 'L' : 'l', pathFactors: [1], hasBar: false, curlGapToNext: 1, scrollFactor,
                                 isSlider: true, isBig: top.isBig, sliderRole: 'tail',
                                 pairId: top.el.sliderId, sliderId: top.el.sliderId
                             });
                         }
                     } else {
-                        elements.push({ type: 'space', pathFactors: [1], hasBar: false, curlGapToNext: 1 });
+                        elements.push({ type: 'space', pathFactors: [1], hasBar: false, curlGapToNext: 1 , scrollFactor});
                     }
                 } else if (ch === '0' && activeSliderTypes.length > 0) {
                     const currentType = activeSliderTypes[activeSliderTypes.length - 1];
@@ -1174,21 +1176,21 @@ if (cs.isBalloon) {
                     else if (currentType === 'balloon') bodyType = 'balloonBody';
                     else bodyType = 'sliderBody';
                     elements.push({
-                        type: bodyType, pathFactors: [1], hasBar: false, curlGapToNext: 1
+                        type: bodyType, pathFactors: [1], hasBar: false, curlGapToNext: 1, scrollFactor
                     });
                 } else {
                     elements.push({
-                        type: mapDigit[ch] || 'space', pathFactors: [1], hasBar: false, curlGapToNext: 1
+                        type: mapDigit[ch] || 'space', pathFactors: [1], hasBar: false, curlGapToNext: 1, scrollFactor
                     });
                 }
             }
             // 【修复点】不再在segment结束时清空sliderStack，允许跨小节
             elements[0].hasBar = true;
             console.log(
-                seg,
+                tokens.map(t => t.ch).join(''),
                 elements.map(e => e.type)
             );
-            curCourse.rows.push({ elements, baseGap });
+            curCourse.rows.push({ elements, baseGap});
         };
 
         const applyDirective = (dir) => {
@@ -1197,11 +1199,19 @@ if (cs.isBalloon) {
                 const parts = expr.split('/');
                 a = parts.length === 2 ? parseFloat(parts[0]) / parseFloat(parts[1]) : (parseFloat(expr) || 1);
             } else if (dir.startsWith('#SCROLL')) {
+
                 if (visualFocusActive) {
-                    const val = parseFloat(dir.replace('#SCROLL', '').trim());
-                    if (!isNaN(val)) b = val;
+
+                    const val =
+                        parseFloat(
+                            dir.replace('#SCROLL', '').trim()
+                        );
+
+                    if (!isNaN(val))
+                        currentScroll = val;
                 }
             }
+
         };
 
         // 清理未闭合的slider（在course结束或#END时调用）
@@ -1223,49 +1233,22 @@ if (cs.isBalloon) {
             if (!line) continue;
 
             if (line.startsWith('COURSE:')) {
-                if (buffer) {
-                    const parts = buffer.split(',');
-                    buffer = '';
-                    for (const p of parts) {
-                        const seg = p.replace(/\s/g, '');
-                        if (seg) processSegment(seg);
-                        else if (curCourse) curCourse.rows.push({
-                            elements: [{ type: 'space', pathFactors: [1], hasBar: true, curlGapToNext: 1 }],
-                            baseGap: DEFAULT_GAP * 16 * a * b
-                        });
-                    }
+                if (buffer.length) {
+                    buffer = [];
                 }
                 clearUnclosedSliders(); // 新难度开始，清理之前残留
                 if (curCourse && curCourse.rows.length) courses.push(curCourse);
                 const name = line.replace('COURSE:', '').trim();
                 curCourse = { name, rows: [], title: globalTitle, level: curLevel };
-                curLevel = ''; inStart = false; b = 1; a = 1; buffer = '';
+                curLevel = ''; inStart = false; currentScroll = 1; a = 1; buffer = [];
             } else if (line === '#START') {
-                if (buffer) {
-                    const parts = buffer.split(',');
-                    buffer = '';
-                    for (const p of parts) {
-                        const seg = p.replace(/\s/g, '');
-                        if (seg) processSegment(seg);
-                        else if (curCourse) curCourse.rows.push({
-                            elements: [{ type: 'space', pathFactors: [1], hasBar: true, curlGapToNext: 1 }],
-                            baseGap: DEFAULT_GAP * 16 * a * b
-                        });
-                    }
+                if (buffer.length) {
+                    buffer = [];
                 }
                 inStart = true;
             } else if (line === '#END') {
-                if (buffer) {
-                    const parts = buffer.split(',');
-                    buffer = '';
-                    for (const p of parts) {
-                        const seg = p.replace(/\s/g, '');
-                        if (seg) processSegment(seg);
-                        else if (curCourse) curCourse.rows.push({
-                            elements: [{ type: 'space', pathFactors: [1], hasBar: true, curlGapToNext: 1 }],
-                            baseGap: DEFAULT_GAP * 16 * a * b
-                        });
-                    }
+                if (buffer.length) {
+                    buffer = [];
                 }
                 clearUnclosedSliders(); // 谱面结束，清理未闭合的长条/气球
                 inStart = false;
@@ -1273,40 +1256,52 @@ if (cs.isBalloon) {
                 let idx = 0;
                 while (idx < line.length) {
                     if (line[idx] === '#') {
-                        if (buffer) {
-                            const parts = buffer.split(',');
-                            buffer = parts.pop();
-                            for (const p of parts) {
-                                const seg = p.replace(/\s/g, '');
-                                if (seg) processSegment(seg);
-                                else if (curCourse) curCourse.rows.push({
-                                    elements: [{ type: 'space', pathFactors: [1], hasBar: true, curlGapToNext: 1 }],
-                                    baseGap: DEFAULT_GAP * 16 * a * b
-                                });
-                            }
-                        }
                         let dir = '#';
                         idx++;
-                        while (idx < line.length && line[idx] !== '#') {
-                            dir += line[idx];
-                            idx++;
-                        }
+                        while (
+                                idx < line.length &&
+                                line[idx] !== '#'
+                            ) {
+                                dir += line[idx];
+                                idx++;
+                            }
                         applyDirective(dir.trim());
                     } else {
-                        buffer += line[idx];
+                        const ch = line[idx];
+                        if (ch === ',') {
+
+                            if (buffer.length) {
+
+                                processSegment(buffer);
+
+                            } else {
+
+                                curCourse.rows.push({
+                                    elements: [{
+                                        type: 'space',
+                                        pathFactors: [1],
+                                        hasBar: true,
+                                        curlGapToNext: 1,
+                                        scrollFactor: currentScroll
+                                    }],
+                                    baseGap: DEFAULT_GAP * 16 * a
+                                });
+
+                            }
+
+                            buffer = [];
+
+                            idx++;
+
+                            continue;
+                        }
+                        if (!/\s/.test(ch)) {
+                            buffer.push({
+                                ch,
+                                scrollFactor: currentScroll
+                            });
+                        }
                         idx++;
-                    }
-                }
-                if (buffer.includes(',')) {
-                    const parts = buffer.split(',');
-                    buffer = parts.pop();
-                    for (const p of parts) {
-                        const seg = p.replace(/\s/g, '');
-                        if (seg) processSegment(seg);
-                        else if (curCourse) curCourse.rows.push({
-                            elements: [{ type: 'space', pathFactors: [1], hasBar: true, curlGapToNext: 1 }],
-                            baseGap: DEFAULT_GAP * 16 * a * b
-                        });
                     }
                 }
             } else if (!inStart && line.startsWith('LEVEL:')) {
@@ -1314,16 +1309,9 @@ if (cs.isBalloon) {
                 if (curCourse) curCourse.level = curLevel;
             }
         }
-        if (buffer) {
-            const parts = buffer.split(',');
-            for (const p of parts) {
-                const seg = p.replace(/\s/g, '');
-                if (seg) processSegment(seg);
-                else if (curCourse) curCourse.rows.push({
-                    elements: [{ type: 'space', pathFactors: [1], hasBar: true, curlGapToNext: 1 }],
-                    baseGap: DEFAULT_GAP * 16 * a * b
-                });
-            }
+        if (buffer.length) {
+            processSegment(buffer);
+            buffer = [];
         }
         clearUnclosedSliders(); // 最终清理
         if (curCourse && curCourse.rows.length) courses.push(curCourse);
@@ -1347,78 +1335,235 @@ if (cs.isBalloon) {
         }).join('\n');
     }
 
+    function getElementGap(el, sb) {
+        return sb * (el?.scrollFactor ?? 1);
+    }
+
     // ----- 合并短行 (TJA) -----
     function mergeTJARows(rows, hs) {
         const layouts = [];
+        const TARGET_WIDTH = DEFAULT_GAP * 16 * 4 * hs;
         let group = { elements: [], positions: [], gapSum: 0, gapToNext: 0, rowCount: 0 };
         for (let r = 0; r < rows.length; r++) {
             const row = rows[r];
-            const sb = row.baseGap * hs;      
+            const sb = row.baseGap * hs;
             const isSp =
                 row.elements.length === 1 &&
                 row.elements[0].type === 'space';
-            const cur =
-                isSp
-                ? 0
-                : sb * (row.elements.length - 1);
-
+            let cur = 0;
+            if (!isSp) {
+                for (let i = 0; i < row.elements.length - 1; i++) {
+                    cur += getElementGap(
+                        row.elements[i],
+                        sb
+                    );
+                }
+            }
             const gap = group.rowCount > 0 ? group.gapToNext : 0;
-            if (group.rowCount === 0 || group.gapSum + gap + cur <= MAX_GAP_SUM) {
-                if (group.rowCount > 0) group.positions.push(group.positions[group.positions.length-1] + group.gapToNext);
+            const currentWidth = group.gapSum
+            const candidateWidth = currentWidth + gap + cur;
+            const currentError =
+                Math.abs(
+                    TARGET_WIDTH -
+                    currentWidth
+                );
+            const candidateError =
+                Math.abs(
+                    TARGET_WIDTH -
+                    candidateWidth
+                );
+            const shouldAdd =
+                candidateError <= currentError;
+            if (group.rowCount === 0 || (candidateWidth <= MAX_GAP_SUM)) {
+                if (group.rowCount > 0){
+                    const prevEl =
+                        group.gapToNextEl;
+                    group.positions.push(
+                        group.positions[group.positions.length - 1]
+                        + getElementGap(
+                            prevEl,
+                            group.gapToNext
+                        )
+                    );
+                }
                 for (let i = 0; i < row.elements.length; i++) {
                     const el = { ...row.elements[i], hasBar: row.elements[i].hasBar };
-                    if (isSp) el.spaceWidth = sb;
+                    if (isSp){
+                        el.spaceWidth =
+                        getElementGap(
+                            row.elements[0],
+                            sb
+                        );
+                    }
                     group.elements.push(el);
                     if (i === 0 && group.rowCount === 0) group.positions.push(0);
-                    else if (i > 0) group.positions.push(group.positions[group.positions.length-1] + sb);
+                    else if (i > 0) {
+                        const prevEl =
+                            row.elements[i - 1];
+                        group.positions.push(
+                            group.positions[group.positions.length - 1]
+                            + getElementGap(prevEl, sb)
+                        );
+                    }
                 }
                 group.gapSum = cur + (group.rowCount > 0 ? gap : 0) + group.gapSum;
                 group.gapToNext = sb;
+                group.gapToNextEl =
+                    row.elements[
+                        row.elements.length - 1
+                    ];
                 group.rowCount++;
 
                 const nextRow = rows[r+1];
                 const nextSb = nextRow ? nextRow.baseGap * hs : 0;
                 const nextIsSp = nextRow ? (nextRow.elements.length === 1 && nextRow.elements[0].type === 'space') : false;
-                const nextCur = nextRow ? (nextIsSp ? nextSb : nextSb * (nextRow.elements.length - 1)) : 0;
-                let willOverflow = nextRow ? (group.gapSum + group.gapToNext + nextCur > MAX_GAP_SUM) : true;
+                let nextCur = 0;
+                if (nextRow) {
+                    if (nextIsSp) {
+                        nextCur = nextSb;
+                    } else {
+                        for (
+                            let i = 0;
+                            i < nextRow.elements.length - 1;
+                            i++
+                        ) {
+                            nextCur += getElementGap(
+                                nextRow.elements[i],
+                                nextSb
+                            );
+                        }
+                    }
+                }
+                let willOverflow = true;
+                if (nextRow) {
+                    const currentError =
+                        Math.abs(
+                            TARGET_WIDTH -
+                            group.gapSum
+                        );
+                    const nextWidth =
+                        group.gapSum +
+                        group.gapToNext +
+                        nextCur;
+                    const nextError =
+                        Math.abs(
+                            TARGET_WIDTH -
+                            nextWidth
+                        );
+                    const exceedSafety =
+                        nextWidth >
+                        MAX_GAP_SUM;
+                    willOverflow =
+                        exceedSafety ||
+                        (nextError > currentError);
+                }
 
                 if (!nextRow || willOverflow) {
-                    const lastPos = group.positions[group.positions.length-1] + sb;
+
+                    const prevEl =
+                        group.gapToNextEl;
+
+                    const lastPos =
+                        group.positions[group.positions.length - 1]
+                        + getElementGap(
+                            prevEl,
+                            group.gapToNext
+                        );
+
                     group.positions.push(lastPos);
-                    group.elements.push({ type: 'space', pathFactors: [1], hasBar: true, curlGapToNext: 1 });
-                    group.gapSum += sb;
+
+                    group.elements.push({
+                        type:'space',
+                        pathFactors:[1],
+                        hasBar:true,
+                        curlGapToNext:1,
+                        scrollFactor:1
+                    });
+
+                    group.gapSum +=
+                        getElementGap(
+                            prevEl,
+                            sb
+                        );
+
                     layouts.push(buildLayoutFromGroup(group));
-                    group = { elements: [], positions: [], gapSum: 0, gapToNext: 0, rowCount: 0 };
+                    group = {
+                        elements: [],
+                        positions: [],
+                        gapSum: 0,
+                        gapToNext: 0,
+                        gapToNextEl: null,
+                        rowCount: 0
+                    };
+
                 }
             } else {
-                const lastPos = group.positions[group.positions.length-1] + group.gapToNext;
+                const prevEl =
+                    group.gapToNextEl;
+                const lastPos =
+                    group.positions[group.positions.length - 1]
+                    + getElementGap(
+                        prevEl,
+                        group.gapToNext
+                    );
                 group.positions.push(lastPos);
-                group.elements.push({ type: 'space', pathFactors: [1], hasBar: true, curlGapToNext: 1 });
+                group.elements.push({ type: 'space', pathFactors: [1], hasBar: true, curlGapToNext: 1 , scrollFactor: 1});
                 layouts.push(buildLayoutFromGroup(group));
                 group = { elements: [], positions: [], gapSum: 0, gapToNext: 0, rowCount: 0 };
                 for (let i = 0; i < row.elements.length; i++) {
                     const el = { ...row.elements[i], hasBar: row.elements[i].hasBar && i === 0 };
-                    if (isSp) el.spaceWidth = sb;
+                    if (isSp){
+                        el.spaceWidth =
+                        getElementGap(
+                            row.elements[0],
+                            sb
+                        );
+                    }
                     group.elements.push(el);
                     if (i === 0) group.positions.push(0);
-                    else group.positions.push(group.positions[group.positions.length-1] + sb);
+                    else {
+                        const prevEl =
+                            row.elements[i - 1];
+                        group.positions.push(
+                            group.positions[group.positions.length - 1]
+                            + getElementGap(prevEl, sb)
+                        );
+                    }
                 }
                 group.gapSum = cur;
                 group.gapToNext = sb;
+                group.gapToNextEl =
+                    row.elements[
+                        row.elements.length - 1
+                    ];
                 group.rowCount = 1;
                 if (r === rows.length - 1) {
-                    const lastPos2 = group.positions[group.positions.length-1] + sb;
+                    const prevEl =
+                        group.gapToNextEl;
+                    const lastPos2 =
+                        group.positions[group.positions.length - 1]
+                        + getElementGap(
+                            prevEl,
+                            group.gapToNext
+                        );
                     group.positions.push(lastPos2);
-                    group.elements.push({ type: 'space', pathFactors: [1], hasBar: true, curlGapToNext: 1 });
+                    group.elements.push({ type: 'space', pathFactors: [1], hasBar: true, curlGapToNext: 1 , scrollFactor: 1});
                     layouts.push(buildLayoutFromGroup(group));
                     group = { elements: [], positions: [], gapSum: 0, gapToNext: 0, rowCount: 0 };
                 }
             }
         }
         if (group.rowCount > 0) {
-            const lastPos = group.positions[group.positions.length-1] + group.gapToNext;
+            const prevEl =
+                group.gapToNextEl;
+            const lastPos =
+                group.positions[group.positions.length - 1]
+                + getElementGap(
+                    prevEl,
+                    group.gapToNext
+                );
             group.positions.push(lastPos);
-            group.elements.push({ type: 'space', pathFactors: [1], hasBar: true, curlGapToNext: 1 });
+            group.elements.push({ type: 'space', pathFactors: [1], hasBar: true, curlGapToNext: 1 , scrollFactor: 1});
             layouts.push(buildLayoutFromGroup(group));
         }
         buildCrossLayoutSliders(layouts);
