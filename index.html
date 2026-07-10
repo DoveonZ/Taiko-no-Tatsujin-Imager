@@ -1720,6 +1720,20 @@ console.log({
                 const title = selectedCourse.title || '';
                 const diff = selectedCourse.name || '';
                 const lv = selectedCourse.level || '';
+                const tags = [];
+                if (visualFocusActive) {
+                    tags.push('見た目重视');
+                }
+                if (randomMap) {
+                    tags.push('でたらめ');
+                }else if (invertActive) {
+                    tags.push('あべこべ');
+                }
+                const hsVal = parseFloat(hsInput.value) || 1;
+                if (Math.abs(hsVal - 1) > 0.0001) {
+                    tags.push(`HS:${hsVal}`);
+                }
+                const modifierText = tags.join(' ');
                 ctx.save();
                 ctx.font = 'bold 90px "DFPKanteiryu", "KaiTi", sans-serif';
                 ctx.fillStyle = '#e0d5c5';
@@ -1728,7 +1742,11 @@ console.log({
                 ctx.fillText(title, 12, 90);
                 if (diff || lv) {
                     ctx.font = 'bold 72px "DFPKanteiryu", "KaiTi", sans-serif';
-                    ctx.fillText(diff + (lv ? lv : ''), 12, 180);
+                    let secondLine = diff + (lv ? lv : '');
+                    if (modifierText) {
+                        secondLine += ' ' + modifierText;
+                    }
+                    ctx.fillText(secondLine,12,180);
                 }
                 ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
                 ctx.restore();
