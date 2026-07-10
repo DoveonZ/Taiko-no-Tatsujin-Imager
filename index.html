@@ -269,7 +269,7 @@
 
     // ----- 常量与全局变量 -----
     const IMG_SMALL = 106, IMG_BIG = 160, IMG_BALLOON_W = 253, IMG_BALLOON_H = 106;
-    const DEFAULT_GAP = 90, FIXED_HEIGHT = 200, MAX_GAP_SUM = 64*DEFAULT_GAP-1;
+    const DEFAULT_GAP = 90, FIXED_HEIGHT = 200, MAX_GAP_SUM = 67 * DEFAULT_GAP;
     const styleSequence = [0,1,0,2];
     let currentStyleIndex = 0, currentStyle = styleSequence[currentStyleIndex];
     let examples = [];
@@ -1276,16 +1276,12 @@ if (cs.isBalloon) {
 
                             } else {
 
-                                curCourse.rows.push({
-                                    elements: [{
-                                        type: 'space',
-                                        pathFactors: [1],
-                                        hasBar: true,
-                                        curlGapToNext: 1,
+                                processSegment([
+                                    {
+                                        ch: '0',
                                         scrollFactor: currentScroll
-                                    }],
-                                    baseGap: DEFAULT_GAP * 16 * a
-                                });
+                                    }
+                                ]);
 
                             }
 
@@ -1347,33 +1343,15 @@ if (cs.isBalloon) {
         for (let r = 0; r < rows.length; r++) {
             const row = rows[r];
             const sb = row.baseGap * hs;
-            const isSp =
-                row.elements.length === 1 &&
-                row.elements[0].type === 'space';
             let cur = 0;
-            if (!isSp) {
-                for (let i = 0; i < row.elements.length - 1; i++) {
-                    cur += getElementGap(
-                        row.elements[i],
-                        sb
-                    );
-                }
+            for (let i = 0; i < row.elements.length; i++) {
+                cur += getElementGap(
+                    row.elements[i],
+                    sb
+                );
             }
             const gap = group.rowCount > 0 ? group.gapToNext : 0;
-            const currentWidth = group.gapSum
-            const candidateWidth = currentWidth + gap + cur;
-            const currentError =
-                Math.abs(
-                    TARGET_WIDTH -
-                    currentWidth
-                );
-            const candidateError =
-                Math.abs(
-                    TARGET_WIDTH -
-                    candidateWidth
-                );
-            const shouldAdd =
-                candidateError <= currentError;
+            const candidateWidth = group.gapSum + cur;
             if (group.rowCount === 0 || (candidateWidth <= MAX_GAP_SUM)) {
                 if (group.rowCount > 0){
                     const prevEl =
@@ -1388,13 +1366,6 @@ if (cs.isBalloon) {
                 }
                 for (let i = 0; i < row.elements.length; i++) {
                     const el = { ...row.elements[i], hasBar: row.elements[i].hasBar };
-                    if (isSp){
-                        el.spaceWidth =
-                        getElementGap(
-                            row.elements[0],
-                            sb
-                        );
-                    }
                     group.elements.push(el);
                     if (i === 0 && group.rowCount === 0) group.positions.push(0);
                     else if (i > 0) {
@@ -1406,59 +1377,59 @@ if (cs.isBalloon) {
                         );
                     }
                 }
-                group.gapSum = cur + (group.rowCount > 0 ? gap : 0) + group.gapSum;
+                group.gapSum += cur;
                 group.gapToNext = sb;
                 group.gapToNextEl =
                     row.elements[
                         row.elements.length - 1
                     ];
                 group.rowCount++;
-
                 const nextRow = rows[r+1];
                 const nextSb = nextRow ? nextRow.baseGap * hs : 0;
-                const nextIsSp = nextRow ? (nextRow.elements.length === 1 && nextRow.elements[0].type === 'space') : false;
                 let nextCur = 0;
                 if (nextRow) {
-                    if (nextIsSp) {
-                        nextCur = nextSb;
-                    } else {
-                        for (
-                            let i = 0;
-                            i < nextRow.elements.length - 1;
-                            i++
-                        ) {
-                            nextCur += getElementGap(
-                                nextRow.elements[i],
-                                nextSb
-                            );
-                        }
+                    for (
+                        let i = 0;
+                        i < nextRow.elements.length;
+                        i++
+                    ) {
+                        nextCur += getElementGap(
+                            nextRow.elements[i],
+                            nextSb
+                        );
                     }
                 }
-                let willOverflow = true;
+                let shouldBreak = true;
                 if (nextRow) {
+ 
+                    const currentWidth =
+                        group.gapSum;
+                    const nextWidth =
+                        group.gapSum +
+                        nextCur;
                     const currentError =
                         Math.abs(
                             TARGET_WIDTH -
-                            group.gapSum
+                            currentWidth
                         );
-                    const nextWidth =
-                        group.gapSum +
-                        group.gapToNext +
-                        nextCur;
                     const nextError =
                         Math.abs(
                             TARGET_WIDTH -
                             nextWidth
                         );
-                    const exceedSafety =
-                        nextWidth >
-                        MAX_GAP_SUM;
-                    willOverflow =
-                        exceedSafety ||
-                        (nextError > currentError);
-                }
+                    shouldBreak =
+                        nextError > currentError;
+                                         
+console.log({
+    currentWidth,
+    nextWidth,
+    currentError,
+    nextError,
+    shouldBreak
+});
 
-                if (!nextRow || willOverflow) {
+                }
+                if (!nextRow || shouldBreak) {
 
                     const prevEl =
                         group.gapToNextEl;
@@ -1479,13 +1450,6 @@ if (cs.isBalloon) {
                         curlGapToNext:1,
                         scrollFactor:1
                     });
-
-                    group.gapSum +=
-                        getElementGap(
-                            prevEl,
-                            sb
-                        );
-
                     layouts.push(buildLayoutFromGroup(group));
                     group = {
                         elements: [],
@@ -1512,13 +1476,6 @@ if (cs.isBalloon) {
                 group = { elements: [], positions: [], gapSum: 0, gapToNext: 0, rowCount: 0 };
                 for (let i = 0; i < row.elements.length; i++) {
                     const el = { ...row.elements[i], hasBar: row.elements[i].hasBar && i === 0 };
-                    if (isSp){
-                        el.spaceWidth =
-                        getElementGap(
-                            row.elements[0],
-                            sb
-                        );
-                    }
                     group.elements.push(el);
                     if (i === 0) group.positions.push(0);
                     else {
