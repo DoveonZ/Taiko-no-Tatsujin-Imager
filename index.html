@@ -438,6 +438,17 @@
             justify-content: space-between;
             margin: 12px 0;
         }
+        .option-divider {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 16px 0;
+        }
+        .option-section-label {
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: var(--text);
+            margin-bottom: 6px;
+        }
         .branch-order {
             display: flex;
             flex-direction: column;
@@ -557,7 +568,10 @@
             </div>
             <div class="controls-row" id="controlsRow">
                 <button class="btn" id="btnModeSwitch">切换到TJA模式</button>
-                <div class="control-item">
+                <span class="file-upload btn tja-only" id="tjaUploadBtn">
+                    📂 加载TJA <input type="file" id="tjaFileInput" accept=".tja,.txt">
+                </span>
+                <div class="control-item" id="hsControlItem">
                     <label for="hsInput" style="font-weight:bold;">HS</label>
                     <input type="number" id="hsInput" value="1.0" step="0.1" min="0.1">
                 </div>
@@ -568,18 +582,16 @@
                     <img id="smallifyImgBig" src="img/0/oo.png" alt="大"><span class="arrow">→</span><img id="smallifyImgSmall" src="img/0/o.png" alt="小">
                 </button>
                 <button class="btn" id="btnResetView">显示原谱</button>
-                <button class="btn" id="btnClearBars">清除输入框小节线</button>
+                <button class="btn" id="btnClearBars">清除标记</button>
+                <button class="btn" id="btnHighlightSelection">高亮选中部分</button>
                 <button class="btn tja-only" id="btnIgnoreScroll">注重目视</button>
                 <button class="btn tja-only" id="btnOptions">其他选项</button>
                 <button class="btn" id="btnTJAtoText" style="display:none;">TJA转ox</button>
-                <span class="file-upload btn" id="tjaUploadBtn">
-                    📂 加载TJA <input type="file" id="tjaFileInput" accept=".tja,.txt">
-                </span>
                 <div style="position:relative; display:inline-block;">
                     <button class="btn" id="exampleDropdownBtn">📋 快捷示例</button>
                     <div class="example-dropdown" id="exampleDropdown"></div>
                 </div>
-                <button class="btn btn-primary" id="btnDownloadImage">新页面查看</button>
+                <button class="btn btn-primary" id="btnDownloadImage">下载图片</button>
                 <button class="btn" id="btnCollapseControls" title="收起/展开功能区">收起功能区</button>
             </div>
             <div id="courseContainer" style="display:none;" class="course-row"></div>
@@ -631,6 +643,15 @@
         <div class="options-content">
             <h3 style="margin-bottom:16px;">其他选项</h3>
             <div class="option-row">
+                <span><strong>HS 倍速调整</strong></span>
+                <input type="number" id="optHsInput" value="1.0" step="0.1" min="0.1" style="width:80px;padding:4px 8px;border:2px solid var(--border);border-radius:6px;font-family:var(--font-mono);background:var(--input-bg);height:36px;">
+            </div>
+            <div class="option-row">
+                <span>TJA 转 ox 谱面</span>
+                <button class="btn btn-primary" id="optTJAtoText" style="height:34px;padding:0 14px;font-size:0.85rem;">执行转换</button>
+            </div>
+            <hr class="option-divider">
+            <div class="option-row">
                 <span>显示小节线</span>
                 <input type="checkbox" id="optShowBars" checked>
             </div>
@@ -663,6 +684,7 @@
             const bgMergeCheckbox = document.getElementById('bgMergeCheckbox');
             const mergeViewCheckbox = document.getElementById('mergeViewCheckbox');
             const hsInput = document.getElementById('hsInput');
+            const hsControlItem = document.getElementById('hsControlItem');
             const smallifyBtn = document.getElementById('smallifyBtn');
             const smallifyImgBig = document.getElementById('smallifyImgBig');
             const smallifyImgSmall = document.getElementById('smallifyImgSmall');
@@ -697,10 +719,12 @@
             const optShowBars = document.getElementById('optShowBars');
             const optShowBalloonTail = document.getElementById('optShowBalloonTail');
             const optShowGogo = document.getElementById('optShowGogo');
+            const optHsInput = document.getElementById('optHsInput');
+            const optTJAtoText = document.getElementById('optTJAtoText');
             const branchOrderList = document.getElementById('branchOrderList');
             const btnOptionsApply = document.getElementById('btnOptionsApply');
             const btnOptionsCancel = document.getElementById('btnOptionsCancel');
-
+            const btnHighlightSelection = document.getElementById('btnHighlightSelection');
             const loadingOverlay = document.getElementById('loadingOverlay');
             const loadingVideo = document.getElementById('loadingVideo');
 
@@ -713,9 +737,9 @@
                 FIXED_HEIGHT = 195,
                 MAX_GAP_SUM = 67 * DEFAULT_GAP;
 
-            const DECORATION_BLACK = 6,       // 底部黑条高度
-                DECORATION_GRAY = 40,       // 底部灰条高度
-                ROW_TOTAL_HEIGHT = FIXED_HEIGHT + DECORATION_BLACK + DECORATION_GRAY; // 246
+            const DECORATION_BLACK = 6,
+                DECORATION_GRAY = 40,
+                ROW_TOTAL_HEIGHT = FIXED_HEIGHT + DECORATION_BLACK + DECORATION_GRAY;
             const EXTRA_GAP_SAME_BRANCH = 100;
             const styleSequence = [0, 1, 0, 2];
             let currentStyleIndex = 0,
@@ -775,6 +799,18 @@
 
             let loadingToken = 0;
             let loadingHideTimeout = null;
+            let pendingRender = false;
+            function checkAllLoaded() {
+                const requiredKeys = ['o','x','O','X','c1','c2','c3','l1','ll1','l2','ll2','l3','ll3'];
+                const allLoaded = requiredKeys.every(k => loaded[k] === true);
+                if (!allLoaded) return;          // 还没全部加载完，什么都不做
+                if (pendingRender) return;
+                pendingRender = true;
+                requestAnimationFrame(() => {
+                    pendingRender = false;
+                    render();
+                });
+            }
 
             function showLoading() {
                 loadingToken++;
@@ -835,73 +871,44 @@
                 imgL3.src = p + 'l3.png';
                 imgL3Big.src = p + 'll3.png';
             }
+        function bindImageEventsWithCompleteCheck() {
+            // 所有需要检查的图像及其 loaded 键名
+            const entries = [
+                { img: imgOSmall, key: 'o' },
+                { img: imgXSmall, key: 'x' },
+                { img: imgOBig, key: 'O' },
+                { img: imgXBig, key: 'X' },
+                { img: imgL1, key: 'l1' },
+                { img: imgL1Big, key: 'll1' },
+                { img: imgL2, key: 'l2' },
+                { img: imgL2Big, key: 'll2' },
+                { img: imgL3, key: 'l3' },
+                { img: imgL3Big, key: 'll3' },
+                { img: imgC1, key: 'c1' },
+                { img: imgC2, key: 'c2' },
+                { img: imgC3, key: 'c3' }
+            ];
 
-            function bindImageEvents() {
-                imgOSmall.onload = () => { loaded.o = true;
-                    checkAllLoaded(); };
-                imgOSmall.onerror = () => { loaded.o = false;
-                    checkAllLoaded(); };
-                imgXSmall.onload = () => { loaded.x = true;
-                    checkAllLoaded(); };
-                imgXSmall.onerror = () => { loaded.x = false;
-                    checkAllLoaded(); };
-                imgOBig.onload = () => { loaded.O = true;
-                    checkAllLoaded(); };
-                imgOBig.onerror = () => { loaded.O = false;
-                    checkAllLoaded(); };
-                imgXBig.onload = () => { loaded.X = true;
-                    checkAllLoaded(); };
-                imgXBig.onerror = () => { loaded.X = false;
-                    checkAllLoaded(); };
-                imgL1.onload = () => { loaded.l1 = true;
-                    checkAllLoaded(); };
-                imgL1.onerror = () => { loaded.l1 = false;
-                    checkAllLoaded(); };
-                imgL1Big.onload = () => { loaded.ll1 = true;
-                    checkAllLoaded(); };
-                imgL1Big.onerror = () => { loaded.ll1 = false;
-                    checkAllLoaded(); };
-                imgL2.onload = () => { loaded.l2 = true;
-                    checkAllLoaded(); };
-                imgL2.onerror = () => { loaded.l2 = false;
-                    checkAllLoaded(); };
-                imgL2Big.onload = () => { loaded.ll2 = true;
-                    checkAllLoaded(); };
-                imgL2Big.onerror = () => { loaded.ll2 = false;
-                    checkAllLoaded(); };
-                imgL3.onload = () => { loaded.l3 = true;
-                    checkAllLoaded(); };
-                imgL3.onerror = () => { loaded.l3 = false;
-                    checkAllLoaded(); };
-                imgL3Big.onload = () => { loaded.ll3 = true;
-                    checkAllLoaded(); };
-                imgL3Big.onerror = () => { loaded.ll3 = false;
-                    checkAllLoaded(); };
-                imgC1.onload = () => { loaded.c1 = true;
-                    checkAllLoaded(); };
-                imgC1.onerror = () => { loaded.c1 = false;
-                    checkAllLoaded(); };
-                imgC2.onload = () => { loaded.c2 = true;
-                    checkAllLoaded(); };
-                imgC2.onerror = () => { loaded.c2 = false;
-                    checkAllLoaded(); };
-                imgC3.onload = () => { loaded.c3 = true;
-                    checkAllLoaded(); };
-                imgC3.onerror = () => { loaded.c3 = false;
-                    checkAllLoaded(); };
-            }
-            updateImageSources();
-            bindImageEvents();
+            const setLoaded = (key, value) => {
+                loaded[key] = value;
+                checkAllLoaded();
+            };
 
-            let pendingRender = false;
-            function checkAllLoaded() {
-                if (pendingRender) return;
-                pendingRender = true;
-                requestAnimationFrame(() => {
-                    pendingRender = false;
-                    render();
-                });
-            }
+            entries.forEach(({ img, key }) => {
+                // 清除可能存在的旧事件
+                img.onload = null;
+                img.onerror = null;
+
+                img.onload = () => setLoaded(key, true);
+                img.onerror = () => setLoaded(key, false);
+
+                // 如果图片已经在缓存中（complete 为 true）
+                if (img.complete) {
+                    // naturalWidth > 0 表示成功加载
+                    setLoaded(key, img.naturalWidth > 0);
+                }
+            });
+        }
 
             function replaceChineseNotes(str) {
                 let result = str;
@@ -953,7 +960,10 @@
                         while (sliderStack.length) sliderStack.pop().el.hasTail = false;
                         if (cur.length) rows.push(cur);
                         cur = [];
-                        pendHigh = pendBar = false;
+                        if (!'()[]{}'.includes(ch)) {
+                            pendHigh = false;
+                            pendBar = false;
+                        }
                         continue;
                     }
                     if (ch === '*') { pendHigh = true; continue; }
@@ -1177,173 +1187,202 @@
             function invertType(t, inv) { if (!inv || t === 'c') return t; return { o: 'x', x: 'o', O: 'X', X: 'O' }[t] || t; }
             function smallifyType(t) { return t === 'O' ? 'o' : t === 'X' ? 'x' : t; }
 
-            // ==================== 绘制函数 ====================
-function drawLine(canvas, layout, doInvert, doSmallify, randomRow, hideBars, balloonTail, gogoActive) {
-    const ctx = canvas.getContext('2d');
-    canvas.width = Math.ceil(layout.width);
-    canvas.height = ROW_TOTAL_HEIGHT; // 使用包含装饰条的新高度
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // 背景（GOGO 或普通）覆盖整个画布
-    if (gogoActive) {
-        if (layout.segments && layout.segments.length) {
-            for (const seg of layout.segments) {
-                ctx.fillStyle = getGogoBgColor(layout.branchType || 'COMMON', seg.gogo);
-                ctx.fillRect(seg.startX, 0, seg.endX - seg.startX, canvas.height);
-            }
-        } else {
-            ctx.fillStyle = getGogoBgColor(layout.branchType || 'COMMON', false);
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
-    } else {
-        ctx.fillStyle = getGogoBgColor(layout.branchType || 'COMMON', false);
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-
-    // 绘制底部装饰条（固定颜色，不受 GOGO 影响）
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(0, FIXED_HEIGHT, canvas.width, DECORATION_BLACK);
-    ctx.fillStyle = '#818181';
-    ctx.fillRect(0, FIXED_HEIGHT + DECORATION_BLACK, canvas.width, DECORATION_GRAY);
-
-    // 小节线（仅在 200px 高度内绘制）
-    if (!hideBars) {
-        for (let i = 0; i < layout.elements.length; i++) {
-            const el = layout.elements[i];
-            if (!el.hasBar) continue;
-            const cx = layout.positions[i] + IMG_SMALL / 2 - layout.minX;
-            if (barImage.complete && barImage.naturalWidth > 0) {
-                const bw = barImage.naturalWidth || 5,
-                    bh = barImage.naturalHeight || 200;
-                ctx.drawImage(barImage, cx - bw / 2, 97.5 - bh / 2, bw, bh);
-            }
-        }
-    }
-
-    const { sliders = [], balloons = [] } = layout.sliderData || buildRowSliders(layout.elements);
-    const ignoredIndices = new Set();
-    for (const pair of [...sliders, ...balloons]) {
-        if (pair.headIdx === -1 || pair.tailIdx === -1) continue;
-        for (let i = pair.headIdx + 1; i < pair.tailIdx; i++) ignoredIndices.add(i);
-    }
-
-    const items = [];
-    // 普通音符
-    for (let i = 0; i < layout.elements.length; i++) {
-        const el = layout.elements[i];
-        if (el.type === 'space' || el.sliderRole === 'tail') continue;
-        if (ignoredIndices.has(i)) continue;
-        if (el.type === 'sliderBody' || el.type === 'bigSliderBody' || el.type === 'balloonBody') continue;
-        let dt = el.type;
-        if (randomRow && randomRow[i]) dt = invertType(dt, true);
-        dt = invertType(dt, doInvert);
-        if (doSmallify && dt !== 'c') dt = smallifyType(dt);
-        const isBig = dt === 'O' || dt === 'X';
-        const size = dt === 'c' ? IMG_BALLOON_W : (isBig ? IMG_BIG : IMG_SMALL);
-        const ox = dt === 'c' ? -0.5 : (isBig ? -(IMG_BIG - IMG_SMALL) / 2 : 0);
-        const x = layout.positions[i] + ox;
-        const img = dt === 'c' ? imgC1 : { o: imgOSmall, x: imgXSmall, O: imgOBig, X: imgXBig } [dt];
-        items.push({
-            order: i,
-            draw: () => {
-                ctx.save();
-                ctx.translate(-layout.minX, 0);
-                if (el.highlight) { ctx.shadowColor = 'white'; ctx.shadowBlur = 20; }
-                if (img && img.complete) {
-                    if (dt === 'c') ctx.drawImage(img, x, 97.5 - IMG_BALLOON_H / 2, size, IMG_BALLOON_H);
-                    else ctx.drawImage(img, x, 97.5 - size / 2, size, size);
+            function drawLine(canvas, layout, doInvert, doSmallify, randomRow, hideBars, balloonTail, gogoActive) {
+                const ctx = canvas.getContext('2d');
+                canvas.width = Math.ceil(layout.width);
+                canvas.height = ROW_TOTAL_HEIGHT;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                if (gogoActive) {
+                    if (layout.segments && layout.segments.length) {
+                        for (const seg of layout.segments) {
+                            ctx.fillStyle = getGogoBgColor(layout.branchType || 'COMMON', seg.gogo);
+                            ctx.fillRect(seg.startX, 0, seg.endX - seg.startX, canvas.height);
+                        }
+                    } else {
+                        ctx.fillStyle = getGogoBgColor(layout.branchType || 'COMMON', false);
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    }
+                } else {
+                    ctx.fillStyle = getGogoBgColor(layout.branchType || 'COMMON', false);
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
                 }
-                if (el.highlight) { ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; }
-                ctx.restore();
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(0, FIXED_HEIGHT, canvas.width, DECORATION_BLACK);
+                ctx.fillStyle = '#818181';
+                ctx.fillRect(0, FIXED_HEIGHT + DECORATION_BLACK, canvas.width, DECORATION_GRAY);
+                if (!hideBars) {
+                    for (let i = 0; i < layout.elements.length; i++) {
+                        const el = layout.elements[i];
+                        if (!el.hasBar) continue;
+                        const cx = layout.positions[i] + IMG_SMALL / 2 - layout.minX;
+                        if (barImage.complete && barImage.naturalWidth > 0) {
+                            const bw = barImage.naturalWidth || 5,
+                                bh = barImage.naturalHeight || 200;
+                            ctx.drawImage(barImage, cx - bw / 2, 97.5 - bh / 2, bw, bh);
+                        }
+                    }
+                }
+                const { sliders = [], balloons = [] } = layout.sliderData || buildRowSliders(layout.elements);
+                const ignoredIndices = new Set();
+                for (const pair of [...sliders, ...balloons]) {
+                    if (pair.headIdx === -1 || pair.tailIdx === -1) continue;
+                    for (let i = pair.headIdx + 1; i < pair.tailIdx; i++) ignoredIndices.add(i);
+                }
+                const items = [];
+                for (let i = 0; i < layout.elements.length; i++) {
+                    const el = layout.elements[i];
+                    if (el.type === 'space' || el.sliderRole === 'tail') continue;
+                    if (ignoredIndices.has(i)) continue;
+                    if (el.type === 'sliderBody' || el.type === 'bigSliderBody' || el.type === 'balloonBody') continue;
+                    let dt = el.type;
+                    if (randomRow && randomRow[i]) dt = invertType(dt, true);
+                    dt = invertType(dt, doInvert);
+                    if (doSmallify && dt !== 'c') dt = smallifyType(dt);
+                    const isBig = dt === 'O' || dt === 'X';
+                    const size = dt === 'c' ? IMG_BALLOON_W : (isBig ? IMG_BIG : IMG_SMALL);
+                    const ox = dt === 'c' ? -0.5 : (isBig ? -(IMG_BIG - IMG_SMALL) / 2 : 0);
+                    const x = layout.positions[i] + ox;
+                    const img = dt === 'c' ? imgC1 : { o: imgOSmall, x: imgXSmall, O: imgOBig, X: imgXBig } [dt];
+                    items.push({
+                        order: i,
+                        draw: () => {
+                            ctx.save();
+                            ctx.translate(-layout.minX, 0);
+                            if (el.highlight) { ctx.shadowColor = 'white';
+                                ctx.shadowBlur = 20; }
+                            if (img && img.complete) {
+                                if (dt === 'c') ctx.drawImage(img, x, 97.5 - IMG_BALLOON_H / 2, size, IMG_BALLOON_H);
+                                else ctx.drawImage(img, x, 97.5 - size / 2, size, size);
+                            }
+                            if (el.highlight) { ctx.shadowColor = 'transparent';
+                                ctx.shadowBlur = 0; }
+                            ctx.restore();
+                        }
+                    });
+                }
+                const startBarX = layout.startBarCanvasX ?? 0;
+                const endBarX = layout.endBarCanvasX ?? layout.width;
+                for (const s of sliders) {
+                    let isBig = s.isBig;
+                    if (doSmallify) isBig = false;
+                    const hSize = isBig ? IMG_BIG : IMG_SMALL,
+                        midH = isBig ? 160 : 106,
+                        tSize = isBig ? IMG_BIG : IMG_SMALL;
+                    const hImg = isBig ? imgL1Big : imgL1,
+                        mImg = isBig ? imgL2Big : imgL2,
+                        tImg = isBig ? imgL3Big : imgL3;
+                    const headOnly = s.headIdx !== -1 && s.tailIdx === -1;
+                    const tailOnly = s.headIdx === -1 && s.tailIdx !== -1;
+                    if (headOnly) {
+                        const headX = layout.positions[s.headIdx] + IMG_SMALL / 2;
+                        const headCanvasX = headX - layout.minX;
+                        const bodyWidth = endBarX - headCanvasX;
+                        items.push({ order: s.headIdx, draw: () => { ctx.save();
+                                ctx.translate(-layout.minX, 0);
+                                ctx.drawImage(mImg, headX, 97.5 - midH / 2, bodyWidth, midH);
+                                ctx.drawImage(hImg, headX - hSize / 2, 97.5 - hSize / 2, hSize, hSize);
+                                ctx.restore(); } });
+                        continue;
+                    }
+                    if (tailOnly) {
+                        const tailX = layout.positions[s.tailIdx] + IMG_SMALL / 2;
+                        const tailCanvasX = tailX - layout.minX;
+                        const bodyWidth = tailCanvasX - startBarX;
+                        const bodyStartOriginal = startBarX + layout.minX;
+                        items.push({ order: s.tailIdx, draw: () => { ctx.save();
+                                ctx.translate(-layout.minX, 0);
+                                ctx.drawImage(mImg, bodyStartOriginal, 97.5 - midH / 2, bodyWidth, midH);
+                                ctx.drawImage(tImg, tailX - tSize / 2, 97.5 - tSize / 2, tSize, tSize);
+                                ctx.restore(); } });
+                        continue;
+                    }
+                    if (s.headIdx !== -1 && s.tailIdx !== -1) {
+                        const headX = layout.positions[s.headIdx] + IMG_SMALL / 2,
+                            tailX = layout.positions[s.tailIdx] + IMG_SMALL / 2;
+                        items.push({ order: s.headIdx, draw: () => { ctx.save();
+                                ctx.translate(-layout.minX, 0);
+                                ctx.drawImage(hImg, headX - hSize / 2, 97.5 - hSize / 2, hSize, hSize);
+                                ctx.restore(); } });
+                        items.push({ order: s.headIdx + 1, draw: () => { ctx.save();
+                                ctx.translate(-layout.minX, 0);
+                                ctx.drawImage(mImg, headX, 97.5 - midH / 2, tailX - headX, midH);
+                                ctx.restore(); } });
+                        items.push({ order: s.tailIdx, draw: () => { ctx.save();
+                                ctx.translate(-layout.minX, 0);
+                                ctx.drawImage(tImg, tailX - tSize / 2, 97.5 - tSize / 2, tSize, tSize);
+                                ctx.restore(); } });
+                    }
+                }
+                if (layout.crossSliders) {
+                    for (const cs of layout.crossSliders) {
+                        if (cs.isBalloon) {
+                            if (cs.type === "middle") items.push({ order: -9999, draw: () => { ctx.save();
+                                    ctx.translate(-layout.minX, 0);
+                                    ctx.globalAlpha = 0.7;
+                                    ctx.drawImage(imgC2, startBarX + layout.minX, 73.5, endBarX - startBarX, 48);
+                                    ctx.globalAlpha = 1;
+                                    ctx.restore(); } });
+                            continue;
+                        }
+                        if (cs.type !== 'middle') continue;
+                        const mImg = cs.isBig ? imgL2Big : imgL2,
+                            midH = cs.isBig ? 160 : 106;
+                        items.push({ order: -9999, draw: () => { ctx.save();
+                                ctx.translate(-layout.minX, 0);
+                                ctx.drawImage(mImg, startBarX + layout.minX, 97.5 - midH / 2, endBarX - startBarX, midH);
+                                ctx.restore(); } });
+                    }
+                }
+                if (balloonTail) {
+                    for (const b of balloons) {
+                        const headOnly = b.headIdx !== -1 && b.tailIdx === -1,
+                            tailOnly = b.headIdx === -1 && b.tailIdx !== -1;
+                        if (headOnly) {
+                            const headX = layout.positions[b.headIdx] + IMG_SMALL / 2;
+                            const headCanvasX = headX - layout.minX;
+                            const bodyWidth = endBarX - headCanvasX;
+                            items.push({ order: b.headIdx + 1, draw: () => { ctx.save();
+                                    ctx.translate(-layout.minX, 0);
+                                    ctx.globalAlpha = 0.7;
+                                    ctx.drawImage(imgC2, headX, 73.5, bodyWidth, 48);
+                                    ctx.globalAlpha = 1;
+                                    ctx.restore(); } });
+                            continue;
+                        }
+                        if (tailOnly) {
+                            const tailX = layout.positions[b.tailIdx] + IMG_SMALL / 2;
+                            const tailCanvasX = tailX - layout.minX;
+                            const bodyWidth = tailCanvasX - startBarX;
+                            const bodyStartOriginal = startBarX + layout.minX;
+                            items.push({ order: b.tailIdx, draw: () => { ctx.save();
+                                    ctx.translate(-layout.minX, 0);
+                                    ctx.globalAlpha = 0.7;
+                                    ctx.drawImage(imgC2, bodyStartOriginal, 73.5, bodyWidth, 48);
+                                    ctx.drawImage(imgC3, tailX - 24, 73.5, 48, 48);
+                                    ctx.globalAlpha = 1;
+                                    ctx.restore(); } });
+                            continue;
+                        }
+                        if (b.headIdx === -1 || b.tailIdx === -1) continue;
+                        const headX = layout.positions[b.headIdx] + IMG_SMALL / 2,
+                            tailX = layout.positions[b.tailIdx] + IMG_SMALL / 2;
+                        items.push({ order: b.headIdx + 0.5, draw: () => { ctx.save();
+                                ctx.translate(-layout.minX, 0);
+                                ctx.globalAlpha = 0.7;
+                                ctx.drawImage(imgC2, headX, 73.5, tailX - headX, 48);
+                                ctx.globalAlpha = 1;
+                                ctx.restore(); } });
+                        items.push({ order: b.tailIdx, draw: () => { ctx.save();
+                                ctx.translate(-layout.minX, 0);
+                                ctx.globalAlpha = 0.7;
+                                ctx.drawImage(imgC3, tailX - 24, 73.5, 48, 48);
+                                ctx.globalAlpha = 1;
+                                ctx.restore(); } });
+                    }
+                }
+                items.sort((a, b) => b.order - a.order);
+                for (const item of items) item.draw();
             }
-        });
-    }
-
-    const startBarX = layout.startBarCanvasX ?? 0;
-    const endBarX = layout.endBarCanvasX ?? layout.width;
-
-    // 长条绘制
-    for (const s of sliders) {
-        let isBig = s.isBig;
-        if (doSmallify) isBig = false;
-        const hSize = isBig ? IMG_BIG : IMG_SMALL,
-            midH = isBig ? 160 : 106,
-            tSize = isBig ? IMG_BIG : IMG_SMALL;
-        const hImg = isBig ? imgL1Big : imgL1,
-            mImg = isBig ? imgL2Big : imgL2,
-            tImg = isBig ? imgL3Big : imgL3;
-        const headOnly = s.headIdx !== -1 && s.tailIdx === -1;
-        const tailOnly = s.headIdx === -1 && s.tailIdx !== -1;
-        if (headOnly) {
-            const headX = layout.positions[s.headIdx] + IMG_SMALL / 2;
-            const headCanvasX = headX - layout.minX;
-            const bodyWidth = endBarX - headCanvasX;
-            items.push({ order: s.headIdx, draw: () => { ctx.save(); ctx.translate(-layout.minX, 0); ctx.drawImage(mImg, headX, 97.5 - midH / 2, bodyWidth, midH); ctx.drawImage(hImg, headX - hSize / 2, 97.5 - hSize / 2, hSize, hSize); ctx.restore(); } });
-            continue;
-        }
-        if (tailOnly) {
-            const tailX = layout.positions[s.tailIdx] + IMG_SMALL / 2;
-            const tailCanvasX = tailX - layout.minX;
-            const bodyWidth = tailCanvasX - startBarX;
-            const bodyStartOriginal = startBarX + layout.minX;
-            items.push({ order: s.tailIdx, draw: () => { ctx.save(); ctx.translate(-layout.minX, 0); ctx.drawImage(mImg, bodyStartOriginal, 97.5 - midH / 2, bodyWidth, midH); ctx.drawImage(tImg, tailX - tSize / 2, 97.5 - tSize / 2, tSize, tSize); ctx.restore(); } });
-            continue;
-        }
-        if (s.headIdx !== -1 && s.tailIdx !== -1) {
-            const headX = layout.positions[s.headIdx] + IMG_SMALL / 2,
-                tailX = layout.positions[s.tailIdx] + IMG_SMALL / 2;
-            items.push({ order: s.headIdx, draw: () => { ctx.save(); ctx.translate(-layout.minX, 0); ctx.drawImage(hImg, headX - hSize / 2, 97.5 - hSize / 2, hSize, hSize); ctx.restore(); } });
-            items.push({ order: s.headIdx + 1, draw: () => { ctx.save(); ctx.translate(-layout.minX, 0); ctx.drawImage(mImg, headX, 97.5 - midH / 2, tailX - headX, midH); ctx.restore(); } });
-            items.push({ order: s.tailIdx, draw: () => { ctx.save(); ctx.translate(-layout.minX, 0); ctx.drawImage(tImg, tailX - tSize / 2, 97.5 - tSize / 2, tSize, tSize); ctx.restore(); } });
-        }
-    }
-
-    // 跨行长条/气球中间段
-    if (layout.crossSliders) {
-        for (const cs of layout.crossSliders) {
-            if (cs.isBalloon) {
-                if (cs.type === "middle") items.push({ order: -9999, draw: () => { ctx.save(); ctx.translate(-layout.minX, 0); ctx.globalAlpha = 0.7; ctx.drawImage(imgC2, startBarX + layout.minX, 73.5, endBarX - startBarX, 48); ctx.globalAlpha = 1; ctx.restore(); } });
-                continue;
-            }
-            if (cs.type !== 'middle') continue;
-            const mImg = cs.isBig ? imgL2Big : imgL2,
-                midH = cs.isBig ? 160 : 106;
-            items.push({ order: -9999, draw: () => { ctx.save(); ctx.translate(-layout.minX, 0); ctx.drawImage(mImg, startBarX + layout.minX, 97.5 - midH / 2, endBarX - startBarX, midH); ctx.restore(); } });
-        }
-    }
-
-    // 气球尾巴
-    if (balloonTail) {
-        for (const b of balloons) {
-            const headOnly = b.headIdx !== -1 && b.tailIdx === -1,
-                tailOnly = b.headIdx === -1 && b.tailIdx !== -1;
-            if (headOnly) {
-                const headX = layout.positions[b.headIdx] + IMG_SMALL / 2;
-                const headCanvasX = headX - layout.minX;
-                const bodyWidth = endBarX - headCanvasX;
-                items.push({ order: b.headIdx + 1, draw: () => { ctx.save(); ctx.translate(-layout.minX, 0); ctx.globalAlpha = 0.7; ctx.drawImage(imgC2, headX, 73.5, bodyWidth, 48); ctx.globalAlpha = 1; ctx.restore(); } });
-                continue;
-            }
-            if (tailOnly) {
-                const tailX = layout.positions[b.tailIdx] + IMG_SMALL / 2;
-                const tailCanvasX = tailX - layout.minX;
-                const bodyWidth = tailCanvasX - startBarX;
-                const bodyStartOriginal = startBarX + layout.minX;
-                items.push({ order: b.tailIdx, draw: () => { ctx.save(); ctx.translate(-layout.minX, 0); ctx.globalAlpha = 0.7; ctx.drawImage(imgC2, bodyStartOriginal, 73.5, bodyWidth, 48); ctx.drawImage(imgC3, tailX - 24, 73.5, 48, 48); ctx.globalAlpha = 1; ctx.restore(); } });
-                continue;
-            }
-            if (b.headIdx === -1 || b.tailIdx === -1) continue;
-            const headX = layout.positions[b.headIdx] + IMG_SMALL / 2,
-                tailX = layout.positions[b.tailIdx] + IMG_SMALL / 2;
-            items.push({ order: b.headIdx + 0.5, draw: () => { ctx.save(); ctx.translate(-layout.minX, 0); ctx.globalAlpha = 0.7; ctx.drawImage(imgC2, headX, 73.5, tailX - headX, 48); ctx.globalAlpha = 1; ctx.restore(); } });
-            items.push({ order: b.tailIdx, draw: () => { ctx.save(); ctx.translate(-layout.minX, 0); ctx.globalAlpha = 0.7; ctx.drawImage(imgC3, tailX - 24, 73.5, 48, 48); ctx.globalAlpha = 1; ctx.restore(); } });
-        }
-    }
-
-    items.sort((a, b) => b.order - a.order);
-    for (const item of items) item.draw();
-}
 
             function buildCanvasCacheKey(layout, doInvert, doSmallify, rowIndex) {
                 return JSON.stringify({
@@ -1800,8 +1839,6 @@ function drawLine(canvas, layout, doInvert, doSmallify, randomRow, hideBars, bal
                     0] : 0;
                 if (minX === Infinity) { minX = 0;
                     maxX = IMG_SMALL; }
-
-                // --- 计算小节线起止位置 (canvas 坐标) ---
                 let startBarCanvasX = 0;
                 let endBarCanvasX = (maxX - minX);
                 let hasBar = false;
@@ -1819,8 +1856,6 @@ function drawLine(canvas, layout, doInvert, doSmallify, randomRow, hideBars, bal
                     startBarCanvasX = firstBarOriginal - minX;
                     endBarCanvasX = lastBarOriginal - minX;
                 }
-                // -------------------------------------------------
-
                 const centers = [],
                     gogoFlags = [];
                 for (let i = 0; i < elements.length; i++) {
@@ -1837,7 +1872,6 @@ function drawLine(canvas, layout, doInvert, doSmallify, randomRow, hideBars, bal
                     rawSegments.push({ start: centers[centers.length - 1], end: maxX, gogo: gogoFlags[gogoFlags.length -
                             1] });
                 } else rawSegments.push({ start: minX, end: maxX, gogo: false });
-
                 const mergedSegments = [];
                 for (const seg of rawSegments) {
                     if (!mergedSegments.length || mergedSegments[mergedSegments.length - 1].gogo !== seg.gogo) mergedSegments
@@ -1845,7 +1879,6 @@ function drawLine(canvas, layout, doInvert, doSmallify, randomRow, hideBars, bal
                     else mergedSegments[mergedSegments.length - 1].end = seg.end;
                 }
                 const visualSegments = mergedSegments.map(s => ({ gogo: s.gogo, startX: s.start - minX, endX: s.end - minX }));
-
                 return {
                     elements,
                     positions,
@@ -1968,7 +2001,9 @@ function drawLine(canvas, layout, doInvert, doSmallify, randomRow, hideBars, bal
                 btnClearBars.style.display = tjaModeActive ? 'none' : 'inline-flex';
                 btnIgnoreScroll.classList.toggle('active', visualFocusActive);
                 legendBox.style.display = tjaModeActive ? 'none' : '';
-                btnTJAtoText.style.display = tjaModeActive ? 'inline-flex' : 'none';
+                btnTJAtoText.style.display = 'none';
+                hsControlItem.style.display = tjaModeActive ? 'none' : 'inline-flex';
+                btnHighlightSelection.style.display = tjaModeActive ? 'none' : 'inline-flex';
                 if (btnEditMap) btnEditMap.style.display = tjaModeActive ? 'none' : '';
                 exampleDropdownBtn.style.display = tjaModeActive ? 'none' : 'inline-flex';
                 textarea.placeholder = tjaModeActive ? '可粘贴tja文件内容或拖拽选择tja文件' :
@@ -2031,204 +2066,216 @@ function drawLine(canvas, layout, doInvert, doSmallify, randomRow, hideBars, bal
                 return rowLayouts;
             }
 
-function render() {
-    let loadingToken;
-    if (tjaModeActive) {
-        loadingToken = showLoading();
-    }else hideLoadingImmediate();
-    let rowLayouts;
-    const hsVal = parseFloat(hsInput.value) || 1,
-        hsScale = hsVal > 0 ? hsVal : 1;
-    const doInvert = invertActive,
-        doSmall = smallifyActive;
-    tutorialBox.style.display = tjaModeActive ? 'none' : 'flex';
-    divergenceWarning.style.display = 'none';
+            function render() {
+                let loadingToken;
+                if (tjaModeActive) {
+                    loadingToken = showLoading();
+                } else hideLoadingImmediate();
+                let rowLayouts;
+                const hsVal = parseFloat(hsInput.value) || 1,
+                    hsScale = hsVal > 0 ? hsVal : 1;
+                const doInvert = invertActive,
+                    doSmall = smallifyActive;
+                tutorialBox.style.display = tjaModeActive ? 'none' : 'flex';
+                divergenceWarning.style.display = 'none';
 
-    let inputValue = textarea.value.trim();
-    if (!tjaModeActive && inputValue === '') {
-        inputValue = '(ooxooxooxooxooox)ox(ooox)ox(oxooox)';
-    }
+                let inputValue = textarea.value.trim();
+                if (!tjaModeActive && inputValue === '') {
+                    inputValue = '(ooxooxooxooxooox)ox(ooox)ox(oxooox)';
+                }
 
-    // 解析并生成行布局
-    if (tjaModeActive && selectedCourse) {
-        if (selectedCourse.viewType === 'double') {
-            rowLayouts = buildDoubleLayouts(hsScale);
-        } else if (selectedCourse.hasBranch && branchViewMode !== 'ALL') {
-            const sourceRows = selectedCourse.rows.filter(row => row.branch === 'COMMON' || row.branch === branchViewMode);
-            rowLayouts = getMergedRowsCached(sourceRows, hsScale, selectedCourse.name + '_BRANCH_' + branchViewMode).layouts;
-        } else {
-            rowLayouts = [];
-            const sections = splitBranchSections(selectedCourse.rows);
-            let groupIndex = 0;
-            for (const section of sections) {
-                if (section.type === 'COMMON') {
-                    const layouts = getMergedRowsCached(section.rows, hsScale, selectedCourse.name + '_COMMON_' + groupIndex).layouts;
-                    layouts.forEach(l => { l.branchType = 'COMMON'; l.groupIndex = groupIndex++; });
-                    rowLayouts.push(...layouts);
-                } else {
-                    const branches = splitBranchRows(section.rows);
-                    let activeBranches = [];
-                    if (branchViewMode === 'ALL') {
-                        activeBranches = branchDisplayOrder.filter(b => b.visible).map(b => b.branch);
+                if (tjaModeActive && selectedCourse) {
+                    if (selectedCourse.viewType === 'double') {
+                        rowLayouts = buildDoubleLayouts(hsScale);
+                    } else if (selectedCourse.hasBranch && branchViewMode !== 'ALL') {
+                        const sourceRows = selectedCourse.rows.filter(row => row.branch === 'COMMON' || row.branch ===
+                            branchViewMode);
+                        rowLayouts = getMergedRowsCached(sourceRows, hsScale, selectedCourse.name + '_BRANCH_' +
+                            branchViewMode).layouts;
                     } else {
-                        activeBranches = [branchViewMode];
-                    }
-                    if (activeBranches.length === 0) activeBranches = ['M', 'E', 'N'];
-                    const branchMap = {
-                        M: branches.M.length ? getMergedRowsCached(branches.M, hsScale, selectedCourse.name + '_M').layouts : [],
-                        E: branches.E.length ? getMergedRowsCached(branches.E, hsScale, selectedCourse.name + '_E').layouts : [],
-                        N: branches.N.length ? getMergedRowsCached(branches.N, hsScale, selectedCourse.name + '_N').layouts : []
-                    };
-                    const maxLines = Math.max(...activeBranches.map(b => branchMap[b].length));
-                    for (let i = 0; i < maxLines; i++) {
-                        const currentGroup = groupIndex++;
-                        for (const b of activeBranches) {
-                            if (branchMap[b][i]) {
-                                branchMap[b][i].branchType = b;
-                                branchMap[b][i].groupIndex = currentGroup;
-                                rowLayouts.push(branchMap[b][i]);
+                        rowLayouts = [];
+                        const sections = splitBranchSections(selectedCourse.rows);
+                        let groupIndex = 0;
+                        for (const section of sections) {
+                            if (section.type === 'COMMON') {
+                                const layouts = getMergedRowsCached(section.rows, hsScale, selectedCourse.name + '_COMMON_' +
+                                    groupIndex).layouts;
+                                layouts.forEach(l => { l.branchType = 'COMMON';
+                                    l.groupIndex = groupIndex++; });
+                                rowLayouts.push(...layouts);
+                            } else {
+                                const branches = splitBranchRows(section.rows);
+                                let activeBranches = [];
+                                if (branchViewMode === 'ALL') {
+                                    activeBranches = branchDisplayOrder.filter(b => b.visible).map(b => b.branch);
+                                } else {
+                                    activeBranches = [branchViewMode];
+                                }
+                                if (activeBranches.length === 0) activeBranches = ['M', 'E', 'N'];
+                                const branchMap = {
+                                    M: branches.M.length ? getMergedRowsCached(branches.M, hsScale, selectedCourse
+                                        .name + '_M').layouts : [],
+                                    E: branches.E.length ? getMergedRowsCached(branches.E, hsScale, selectedCourse
+                                        .name + '_E').layouts : [],
+                                    N: branches.N.length ? getMergedRowsCached(branches.N, hsScale, selectedCourse
+                                        .name + '_N').layouts : []
+                                };
+                                const maxLines = Math.max(...activeBranches.map(b => branchMap[b].length));
+                                for (let i = 0; i < maxLines; i++) {
+                                    const currentGroup = groupIndex++;
+                                    for (const b of activeBranches) {
+                                        if (branchMap[b][i]) {
+                                            branchMap[b][i].branchType = b;
+                                            branchMap[b][i].groupIndex = currentGroup;
+                                            rowLayouts.push(branchMap[b][i]);
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
+                } else {
+                    const rows = parseGlobal(replaceChineseNotes(inputValue));
+                    rowLayouts = rows.map(e => layoutLine(e, hsScale)).filter(l => l.elements.some(e => e.type !== 'space'));
                 }
-            }
-        }
-    } else {
-        const rows = parseGlobal(replaceChineseNotes(inputValue));
-        rowLayouts = rows.map(e => layoutLine(e, hsScale)).filter(l => l.elements.some(e => e.type !== 'space'));
-    }
 
-    currentRowLayouts = rowLayouts;
-    infoBar.innerHTML = `行数:${rowLayouts.length} | 音符:${rowLayouts.reduce((s, l) => s + l.elements.filter(e => e.type !== 'space' || e.isSlider).length, 0)} | HS:${hsScale.toFixed(2)} | 样式:${currentStyle}`;
-    previewContainer.querySelectorAll('.preview-row').forEach(el => el.remove());
-    if (!rowLayouts.length) { placeholder.style.display = 'block'; if (tjaModeActive) hideLoading(loadingToken); return; }
-    placeholder.style.display = 'none';
+                currentRowLayouts = rowLayouts;
+                infoBar.innerHTML = `行数:${rowLayouts.length} | 音符:${rowLayouts.reduce((s, l) => s + l.elements.filter(e => e.type !== 'space' || e.isSlider).length, 0)} | HS:${hsScale.toFixed(2)} | 样式:${currentStyle}`;
+                previewContainer.querySelectorAll('.preview-row').forEach(el => el.remove());
+                if (!rowLayouts.length) { placeholder.style.display = 'block'; if (tjaModeActive) hideLoading(
+                    loadingToken); return; }
+                placeholder.style.display = 'none';
 
-    // 合并视图 / 背景合并视图
-    if (mergeViewActive || backgroundMergeActive) {
-        const rowCanvases = rowLayouts.map((l, i) => {
-            const cacheKey = buildCanvasCacheKey(l, doInvert, doSmall, i);
-            let c;
-            if (canvasCache.has(cacheKey)) {
-                c = canvasCache.get(cacheKey);
-            } else {
-                c = document.createElement('canvas');
-                drawLine(c, l, doInvert, doSmall, randomMap?.[i], !showBars, showBalloonTail, showGogo);
-                canvasCache.set(cacheKey, c);
-            }
-            return { canvas: c, firstX: l.firstNoteCanvasX, firstY: 97.5 };
-        });
-        const maxFirstX = Math.max(...rowCanvases.map(r => r.firstX));
-        const infoH = (tjaModeActive && selectedCourse) ? FIXED_HEIGHT : 0,
-            musicY = infoH;
-        const useGroupIndex = (tjaModeActive && selectedCourse?.hasBranch && branchViewMode === 'ALL') ||
-            (tjaModeActive && selectedCourse?.viewType === 'double' && (doubleViewMode === 'DOUBLE' || doubleViewMode === 'ALL'));
-        let totalExtraGap = 0;
-        for (let i = 0; i < rowLayouts.length - 1; i++) {
-            if (useGroupIndex) {
-                if (rowLayouts[i].groupIndex !== rowLayouts[i + 1].groupIndex) totalExtraGap += EXTRA_GAP_SAME_BRANCH;
-            } else totalExtraGap += EXTRA_GAP_SAME_BRANCH;
-        }
-        // 关键修改：使用 ROW_TOTAL_HEIGHT 计算总高度
-        const finalH = musicY + rowLayouts.length * ROW_TOTAL_HEIGHT + totalExtraGap;
-        const maxW = Math.max(...rowCanvases.map((r, i) => (maxFirstX - r.firstX) + r.canvas.width));
-        const mc = document.createElement('canvas');
-        mc.width = Math.ceil(maxW);
-        mc.height = Math.ceil(finalH);
-        const ctx = mc.getContext('2d');
-        if (backgroundMergeActive) { ctx.fillStyle = '#151515'; ctx.fillRect(0, 0, mc.width, mc.height); }
-        // 标题绘制不变...
-        if (tjaModeActive && selectedCourse) {
-    const title = selectedCourse.title || '',
-        diff = selectedCourse.name || '',
-        lv = selectedCourse.level || '';
-    let displayTitle = title;
-    if (selectedCourse?.viewType === 'double') {
-        const isTagTeam = isTagTeamCourse(selectedCourse);
-        const labelMap = { SINGLE: '单人', DOUBLE: isTagTeam ? '双打' : '双人', P1: 'P1', P2: 'P2', ALL: '合并' };
-        displayTitle = title + '(' + labelMap[doubleViewMode] + ')';
-    } else if (selectedCourse.hasBranch && branchViewMode !== 'ALL') {
-        const branchNames = { M: '達人', E: '玄人', N: '普通' };
-        const branchName = branchNames[branchViewMode];
-        if (branchName) displayTitle = title + '(' + branchName + ')';
-    }
-    const tags = [];
-    if (visualFocusActive) tags.push('見た目重视');
-    if (randomMap) tags.push('でたらめ');
-    else if (invertActive) tags.push('あべこべ');
-    const hsValNum = parseFloat(hsInput.value) || 1;
-    if (Math.abs(hsValNum - 1) > 0.0001) tags.push(`HS:${hsValNum}`);
-    const modifierText = tags.join(' ');
-    ctx.save();
-    ctx.font = 'bold 90px "DFPKanteiryu","KaiTi",sans-serif';
-    ctx.fillStyle = '#e0d5c5';
-    ctx.shadowColor = 'rgba(0,0,0,0.8)';
-    ctx.shadowBlur = 4;
-    ctx.fillText(displayTitle, 12, 90);
-    if (diff || lv) {
-        ctx.font = 'bold 72px "DFPKanteiryu","KaiTi",sans-serif';
-        let secondLine = diff + (lv ? lv : '');
-        if (modifierText) secondLine += ' ' + modifierText;
-        ctx.fillText(secondLine, 12, 180);
-    }
-    ctx.shadowColor = 'transparent';
-    ctx.shadowBlur = 0;
-    ctx.restore();
-}
-        let y = musicY;
-        rowLayouts.forEach((l, i) => {
-            ctx.drawImage(rowCanvases[i].canvas, maxFirstX - rowCanvases[i].firstX, y);
-            if (i < rowLayouts.length - 1) {
-                let gap;
-                if (useGroupIndex) gap = (rowLayouts[i].groupIndex !== rowLayouts[i + 1].groupIndex) ? ROW_TOTAL_HEIGHT + EXTRA_GAP_SAME_BRANCH : ROW_TOTAL_HEIGHT;
-                else gap = ROW_TOTAL_HEIGHT + EXTRA_GAP_SAME_BRANCH;
-                y += gap;
-            }
-        });
-        const div = document.createElement('div');
-        div.className = 'preview-row';
-        div.innerHTML = `<div class="preview-row-header"><span>${backgroundMergeActive ? '合并背景' : '合并多行'} (${rowLayouts.length}行)</span></div>`;
-        const wrap = document.createElement('div');
-        wrap.className = 'preview-canvas-wrapper';
-        wrap.appendChild(mc);
-        div.appendChild(wrap);
-        previewContainer.appendChild(div);
-        const scale = Math.min(1, (previewContainer.clientWidth - 32) / maxW);
-        mc.style.width = mc.width * scale + 'px';
-        mc.style.height = mc.height * scale + 'px';
-    } else {
-        // 单行显示，也使用 ROW_TOTAL_HEIGHT
-        const maxFirstX = Math.max(...rowLayouts.map(l => l.firstNoteCanvasX));
-        rowLayouts.forEach((l, i) => {
-            const orig = document.createElement('canvas');
-            drawLine(orig, l, doInvert, doSmall, randomMap?.[i], !showBars, showBalloonTail, showGogo);
-            const extra = maxFirstX - l.firstNoteCanvasX;
-            const final = document.createElement('canvas');
-            final.width = Math.ceil(extra + l.width);
-            final.height = ROW_TOTAL_HEIGHT; // 修改为包含装饰条的高度
-            final.getContext('2d').drawImage(orig, extra, 0);
-            const div = document.createElement('div');
-            div.className = 'preview-row';
-            div.innerHTML = `<div class="preview-row-header"><span>第${i + 1}行 (${l.elements.filter(e => e.type !== 'space' || e.isSlider).length}音符)</span></div>`;
-            const wrap = document.createElement('div');
-            wrap.className = 'preview-canvas-wrapper';
-            wrap.appendChild(final);
-            div.appendChild(wrap);
-            previewContainer.appendChild(div);
-        });
-        const allC = previewContainer.querySelectorAll('canvas:not(.preview-checkboxes canvas)');
-        const maxW = Math.max(...Array.from(allC).map(c => c.width));
-        const scale = Math.min(1, (previewContainer.clientWidth - 32) / maxW);
-        allC.forEach(c => { c.style.width = c.width * scale + 'px'; c.style.height = c.height * scale + 'px'; });
-    }
+                if (mergeViewActive || backgroundMergeActive) {
+                    const rowCanvases = rowLayouts.map((l, i) => {
+                        const cacheKey = buildCanvasCacheKey(l, doInvert, doSmall, i);
+                        let c;
+                        if (canvasCache.has(cacheKey)) {
+                            c = canvasCache.get(cacheKey);
+                        } else {
+                            c = document.createElement('canvas');
+                            drawLine(c, l, doInvert, doSmall, randomMap?.[i], !showBars, showBalloonTail, showGogo);
+                            canvasCache.set(cacheKey, c);
+                        }
+                        return { canvas: c, firstX: l.firstNoteCanvasX, firstY: 97.5 };
+                    });
+                    const maxFirstX = Math.max(...rowCanvases.map(r => r.firstX));
+                    const infoH = (tjaModeActive && selectedCourse) ? FIXED_HEIGHT : 0,
+                        musicY = infoH;
+                    const useGroupIndex = (tjaModeActive && selectedCourse?.hasBranch && branchViewMode === 'ALL') ||
+                        (tjaModeActive && selectedCourse?.viewType === 'double' && (doubleViewMode === 'DOUBLE' ||
+                            doubleViewMode === 'ALL'));
+                    let totalExtraGap = 0;
+                    for (let i = 0; i < rowLayouts.length - 1; i++) {
+                        if (useGroupIndex) {
+                            if (rowLayouts[i].groupIndex !== rowLayouts[i + 1].groupIndex) totalExtraGap +=
+                                EXTRA_GAP_SAME_BRANCH;
+                        } else totalExtraGap += EXTRA_GAP_SAME_BRANCH;
+                    }
+                    const finalH = musicY + rowLayouts.length * ROW_TOTAL_HEIGHT + totalExtraGap;
+                    const maxW = Math.max(...rowCanvases.map((r, i) => (maxFirstX - r.firstX) + r.canvas.width));
+                    const mc = document.createElement('canvas');
+                    mc.width = Math.ceil(maxW);
+                    mc.height = Math.ceil(finalH);
+                    const ctx = mc.getContext('2d');
+                    if (backgroundMergeActive) { ctx.fillStyle = '#151515';
+                        ctx.fillRect(0, 0, mc.width, mc.height); }
+                    if (tjaModeActive && selectedCourse) {
+                        const title = selectedCourse.title || '',
+                            diff = selectedCourse.name || '',
+                            lv = selectedCourse.level || '';
+                        let displayTitle = title;
+                        if (selectedCourse?.viewType === 'double') {
+                            const isTagTeam = isTagTeamCourse(selectedCourse);
+                            const labelMap = { SINGLE: '单人', DOUBLE: isTagTeam ? '双打' : '双人', P1: 'P1', P2: 'P2',
+                            ALL: '合并' };
+                            displayTitle = title + '(' + labelMap[doubleViewMode] + ')';
+                        } else if (selectedCourse.hasBranch && branchViewMode !== 'ALL') {
+                            const branchNames = { M: '達人', E: '玄人', N: '普通' };
+                            const branchName = branchNames[branchViewMode];
+                            if (branchName) displayTitle = title + '(' + branchName + ')';
+                        }
+                        const tags = [];
+                        if (visualFocusActive) tags.push('見た目重视');
+                        if (randomMap) tags.push('でたらめ');
+                        else if (invertActive) tags.push('あべこべ');
+                        const hsValNum = parseFloat(hsInput.value) || 1;
+                        if (Math.abs(hsValNum - 1) > 0.0001) tags.push(`HS:${hsValNum}`);
+                        const modifierText = tags.join(' ');
+                        ctx.save();
+                        ctx.font = 'bold 90px "DFPKanteiryu","KaiTi",sans-serif';
+                        ctx.fillStyle = '#e0d5c5';
+                        ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                        ctx.shadowBlur = 4;
+                        ctx.fillText(displayTitle, 12, 90);
+                        if (diff || lv) {
+                            ctx.font = 'bold 72px "DFPKanteiryu","KaiTi",sans-serif';
+                            let secondLine = diff + (lv ? lv : '');
+                            if (modifierText) secondLine += ' ' + modifierText;
+                            ctx.fillText(secondLine, 12, 180);
+                        }
+                        ctx.shadowColor = 'transparent';
+                        ctx.shadowBlur = 0;
+                        ctx.restore();
+                    }
+                    let y = musicY;
+                    rowLayouts.forEach((l, i) => {
+                        ctx.drawImage(rowCanvases[i].canvas, maxFirstX - rowCanvases[i].firstX, y);
+                        if (i < rowLayouts.length - 1) {
+                            let gap;
+                            if (useGroupIndex) gap = (rowLayouts[i].groupIndex !== rowLayouts[i + 1].groupIndex) ?
+                                ROW_TOTAL_HEIGHT + EXTRA_GAP_SAME_BRANCH : ROW_TOTAL_HEIGHT;
+                            else gap = ROW_TOTAL_HEIGHT + EXTRA_GAP_SAME_BRANCH;
+                            y += gap;
+                        }
+                    });
+                    const div = document.createElement('div');
+                    div.className = 'preview-row';
+                    div.innerHTML =
+                        `<div class="preview-row-header"><span>${backgroundMergeActive ? '合并背景' : '合并多行'} (${rowLayouts.length}行)</span></div>`;
+                    const wrap = document.createElement('div');
+                    wrap.className = 'preview-canvas-wrapper';
+                    wrap.appendChild(mc);
+                    div.appendChild(wrap);
+                    previewContainer.appendChild(div);
+                    const scale = Math.min(1, (previewContainer.clientWidth - 32) / maxW);
+                    mc.style.width = mc.width * scale + 'px';
+                    mc.style.height = mc.height * scale + 'px';
+                } else {
+                    const maxFirstX = Math.max(...rowLayouts.map(l => l.firstNoteCanvasX));
+                    rowLayouts.forEach((l, i) => {
+                        const orig = document.createElement('canvas');
+                        drawLine(orig, l, doInvert, doSmall, randomMap?.[i], !showBars, showBalloonTail, showGogo);
+                        const extra = maxFirstX - l.firstNoteCanvasX;
+                        const final = document.createElement('canvas');
+                        final.width = Math.ceil(extra + l.width);
+                        final.height = ROW_TOTAL_HEIGHT;
+                        final.getContext('2d').drawImage(orig, extra, 0);
+                        const div = document.createElement('div');
+                        div.className = 'preview-row';
+                        div.innerHTML =
+                            `<div class="preview-row-header"><span>第${i + 1}行 (${l.elements.filter(e => e.type !== 'space' || e.isSlider).length}音符)</span></div>`;
+                        const wrap = document.createElement('div');
+                        wrap.className = 'preview-canvas-wrapper';
+                        wrap.appendChild(final);
+                        div.appendChild(wrap);
+                        previewContainer.appendChild(div);
+                    });
+                    const allC = previewContainer.querySelectorAll('canvas:not(.preview-checkboxes canvas)');
+                    const maxW = Math.max(...Array.from(allC).map(c => c.width));
+                    const scale = Math.min(1, (previewContainer.clientWidth - 32) / maxW);
+                    allC.forEach(c => { c.style.width = c.width * scale + 'px';
+                        c.style.height = c.height * scale + 'px'; });
+                }
 
-    if (tjaModeActive) hideLoading(loadingToken);
-}
+                if (tjaModeActive) hideLoading(loadingToken);
+            }
 
             function openOptionsModal() {
                 optShowBars.checked = showBars;
                 optShowBalloonTail.checked = showBalloonTail;
                 optShowGogo.checked = showGogo;
+                optHsInput.value = hsInput.value;
                 rebuildBranchOrderList();
                 optionsModal.style.display = 'flex';
             }
@@ -2283,10 +2330,27 @@ function render() {
                 showBars = optShowBars.checked;
                 showBalloonTail = optShowBalloonTail.checked;
                 showGogo = optShowGogo.checked;
+                const optHs = parseFloat(optHsInput.value);
+                if (!isNaN(optHs) && optHs > 0) {
+                    hsInput.value = optHs;
+                }
                 optionsModal.style.display = 'none';
                 showLoading();
                 render();
             }
+
+            optTJAtoText.addEventListener('click', () => {
+                if (!selectedCourse) return;
+                showLoading();
+                if (selectedCourse.viewType === 'double') {
+                    const rows = selectedCourse.hasSingle ? selectedCourse.singleRows : selectedCourse.p1Rows;
+                    textarea.value = convertTJAtoText(rows);
+                } else {
+                    textarea.value = convertTJAtoText(selectedCourse.rows);
+                }
+                optionsModal.style.display = 'none';
+                exitTJAMode(false);
+            });
 
             textarea.addEventListener('dragover', (e) => {
                 e.preventDefault();
@@ -2376,6 +2440,47 @@ function render() {
                 render();
             });
 
+            btnHighlightSelection.addEventListener('click', () => {
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                if (start === end) {
+                    alert('请先选中需要高亮的文本区域');
+                    return;
+                }
+
+                const value = textarea.value;
+                // 选区前一个字符（用于判断是否需要加*）
+                const prevChar = start > 0 ? value[start - 1] : '';
+
+                // 合法音符字符集（空格不作为高亮对象）
+                const isLegalNote = (ch) => /[oxOXclL+\-=]/.test(ch);
+
+                let result = '';
+                let lastChar = prevChar; // 用于跟踪前一个字符是否为'*'
+
+                for (let i = start; i < end; i++) {
+                    const ch = value[i];
+                    if (isLegalNote(ch) && lastChar !== '*') {
+                        result += '*' + ch;
+                        lastChar = ch; // 更新为当前音符
+                    } else {
+                        result += ch;
+                        lastChar = ch === '*' ? '*' : ch; // 保持对'*'的追踪
+                    }
+                }
+
+                // 组合新文本
+                textarea.value = value.substring(0, start) + result + value.substring(end);
+                
+                // 将光标放在原来选区结束的位置（考虑长度变化）
+                const newEnd = start + result.length;
+                textarea.setSelectionRange(newEnd, newEnd);
+                textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                textarea.focus();
+
+                // 因为修改了 value，会自动触发 'input' 事件从而刷新预览
+            });
+
             smallifyBtn.addEventListener('click', () => {
                 showLoading();
                 smallifyActive = !smallifyActive;
@@ -2389,11 +2494,10 @@ function render() {
                 currentStyle = styleSequence[currentStyleIndex];
                 Object.keys(loaded).forEach(k => loaded[k] = false);
                 updateImageSources();
-                bindImageEvents();
+                bindImageEventsWithCompleteCheck();
                 updateStyleButtonIcon();
                 canvasCache.clear();
                 rowMergeCache.clear();
-                render();
             });
 
             function updateStyleButtonIcon() {
@@ -2461,6 +2565,7 @@ function render() {
 
             hsInput.addEventListener('input', () => {
                 showLoading();
+                if (optHsInput) optHsInput.value = hsInput.value;
                 render();
             });
 
@@ -2490,7 +2595,8 @@ function render() {
 
             btnClearBars.addEventListener('click', () => {
                 showLoading();
-                const cleaned = textarea.value.replace(/[|/\\]/g, '');
+                // 同时移除小节线和高亮标记
+                const cleaned = textarea.value.replace(/[|/\\\*]/g, '');
                 textarea.value = cleaned;
                 if (tjaModeActive) {
                     tjaCourses = parseTJA(cleaned);
@@ -2526,90 +2632,95 @@ function render() {
                 btnCollapseControls.style.display = '';
             });
 
-btnDownloadImage.addEventListener('click', () => {
-    if (!currentRowLayouts.length) return;
-    const doInv = invertActive,
-        doSmall = smallifyActive;
-    const rowCanvases = currentRowLayouts.map((l, i) => {
-        const c = document.createElement('canvas');
-        drawLine(c, l, doInv, doSmall, randomMap?.[i], !showBars, showBalloonTail, showGogo);
-        return { canvas: c, firstX: l.firstNoteCanvasX, firstY: 97.5 };
-    });
-    const maxFirstX = Math.max(...rowCanvases.map(r => r.firstX));
-    const infoH = (tjaModeActive && selectedCourse) ? FIXED_HEIGHT : 0;
-    const musicY = infoH;
-    const useGroupIndex = (tjaModeActive && selectedCourse?.hasBranch && branchViewMode === 'ALL') ||
-        (tjaModeActive && selectedCourse?.viewType === 'double' && (doubleViewMode === 'DOUBLE' || doubleViewMode === 'ALL'));
-    let totalExtraGap = 0;
-    for (let i = 0; i < currentRowLayouts.length - 1; i++) {
-        if (useGroupIndex) {
-            if (currentRowLayouts[i].groupIndex !== currentRowLayouts[i + 1].groupIndex) totalExtraGap += EXTRA_GAP_SAME_BRANCH;
-        } else totalExtraGap += EXTRA_GAP_SAME_BRANCH;
-    }
-    // 使用 ROW_TOTAL_HEIGHT 计算总高度
-    const finalH = musicY + currentRowLayouts.length * ROW_TOTAL_HEIGHT + totalExtraGap;
-    const maxW = Math.max(...rowCanvases.map((r, i) => (maxFirstX - r.firstX) + r.canvas.width));
-    const mc = document.createElement('canvas');
-    mc.width = Math.ceil(maxW);
-    mc.height = Math.ceil(finalH);
-    const ctx = mc.getContext('2d');
-    if (backgroundMergeActive) { ctx.fillStyle = '#151515'; ctx.fillRect(0, 0, mc.width, mc.height); }
-    if (tjaModeActive && selectedCourse) {
-    const title = selectedCourse.title || '',
-        diff = selectedCourse.name || '',
-        lv = selectedCourse.level || '';
-    let displayTitle = title;
-    if (selectedCourse?.viewType === 'double') {
-        const isTagTeam = isTagTeamCourse(selectedCourse);
-        const labelMap = { SINGLE: '单人', DOUBLE: isTagTeam ? '双打' : '双人', P1: 'P1', P2: 'P2', ALL: '合并' };
-        displayTitle = title + '(' + labelMap[doubleViewMode] + ')';
-    } else if (selectedCourse.hasBranch && branchViewMode !== 'ALL') {
-        const branchNames = { M: '達人', E: '玄人', N: '普通' };
-        const branchName = branchNames[branchViewMode];
-        if (branchName) displayTitle = title + '(' + branchName + ')';
-    }
-    const tags = [];
-    if (visualFocusActive) tags.push('見た目重视');
-    if (randomMap) tags.push('でたらめ');
-    else if (invertActive) tags.push('あべこべ');
-    const hsValNum = parseFloat(hsInput.value) || 1;
-    if (Math.abs(hsValNum - 1) > 0.0001) tags.push(`HS:${hsValNum}`);
-    const modifierText = tags.join(' ');
-    ctx.save();
-    ctx.font = 'bold 90px "DFPKanteiryu","KaiTi",sans-serif';
-    ctx.fillStyle = '#e0d5c5';
-    ctx.shadowColor = 'rgba(0,0,0,0.8)';
-    ctx.shadowBlur = 4;
-    ctx.fillText(displayTitle, 12, 90);
-    if (diff || lv) {
-        ctx.font = 'bold 72px "DFPKanteiryu","KaiTi",sans-serif';
-        let secondLine = diff + (lv ? lv : '');
-        if (modifierText) secondLine += ' ' + modifierText;
-        ctx.fillText(secondLine, 12, 180);
-    }
-    ctx.shadowColor = 'transparent';
-    ctx.shadowBlur = 0;
-    ctx.restore();
-}
-    let y = musicY;
-    currentRowLayouts.forEach((l, i) => {
-        ctx.drawImage(rowCanvases[i].canvas, maxFirstX - rowCanvases[i].firstX, y);
-        if (i < currentRowLayouts.length - 1) {
-            let gap;
-            if (useGroupIndex) gap = (currentRowLayouts[i].groupIndex !== currentRowLayouts[i + 1].groupIndex) ? ROW_TOTAL_HEIGHT + EXTRA_GAP_SAME_BRANCH : ROW_TOTAL_HEIGHT;
-            else gap = ROW_TOTAL_HEIGHT + EXTRA_GAP_SAME_BRANCH;
-            y += gap;
-        }
-    });
-    const url = mc.toDataURL('image/png');
-    const w = window.open('');
-    if (w) {
-        w.document.write(`<img src="${url}" style="max-width:100%;height:auto;background:#272727;">`);
-        w.document.title = '预览图片';
-    } else {
-        alert('请允许弹出窗口');
-    }
-});
+            btnDownloadImage.addEventListener('click', () => {
+                if (!currentRowLayouts.length) return;
+                const doInv = invertActive,
+                    doSmall = smallifyActive;
+                const rowCanvases = currentRowLayouts.map((l, i) => {
+                    const c = document.createElement('canvas');
+                    drawLine(c, l, doInv, doSmall, randomMap?.[i], !showBars, showBalloonTail, showGogo);
+                    return { canvas: c, firstX: l.firstNoteCanvasX, firstY: 97.5 };
+                });
+                const maxFirstX = Math.max(...rowCanvases.map(r => r.firstX));
+                const infoH = (tjaModeActive && selectedCourse) ? FIXED_HEIGHT : 0;
+                const musicY = infoH;
+                const useGroupIndex = (tjaModeActive && selectedCourse?.hasBranch && branchViewMode === 'ALL') ||
+                    (tjaModeActive && selectedCourse?.viewType === 'double' && (doubleViewMode === 'DOUBLE' ||
+                        doubleViewMode === 'ALL'));
+                let totalExtraGap = 0;
+                for (let i = 0; i < currentRowLayouts.length - 1; i++) {
+                    if (useGroupIndex) {
+                        if (currentRowLayouts[i].groupIndex !== currentRowLayouts[i + 1].groupIndex) totalExtraGap +=
+                            EXTRA_GAP_SAME_BRANCH;
+                    } else totalExtraGap += EXTRA_GAP_SAME_BRANCH;
+                }
+                const finalH = musicY + currentRowLayouts.length * ROW_TOTAL_HEIGHT + totalExtraGap;
+                const maxW = Math.max(...rowCanvases.map((r, i) => (maxFirstX - r.firstX) + r.canvas.width));
+                const mc = document.createElement('canvas');
+                mc.width = Math.ceil(maxW);
+                mc.height = Math.ceil(finalH);
+                const ctx = mc.getContext('2d');
+                if (backgroundMergeActive) { ctx.fillStyle = '#151515';
+                    ctx.fillRect(0, 0, mc.width, mc.height); }
+                if (tjaModeActive && selectedCourse) {
+                    const title = selectedCourse.title || '',
+                        diff = selectedCourse.name || '',
+                        lv = selectedCourse.level || '';
+                    let displayTitle = title;
+                    if (selectedCourse?.viewType === 'double') {
+                        const isTagTeam = isTagTeamCourse(selectedCourse);
+                        const labelMap = { SINGLE: '单人', DOUBLE: isTagTeam ? '双打' : '双人', P1: 'P1', P2: 'P2',
+                        ALL: '合并' };
+                        displayTitle = title + '(' + labelMap[doubleViewMode] + ')';
+                    } else if (selectedCourse.hasBranch && branchViewMode !== 'ALL') {
+                        const branchNames = { M: '達人', E: '玄人', N: '普通' };
+                        const branchName = branchNames[branchViewMode];
+                        if (branchName) displayTitle = title + '(' + branchName + ')';
+                    }
+                    const tags = [];
+                    if (visualFocusActive) tags.push('見た目重视');
+                    if (randomMap) tags.push('でたらめ');
+                    else if (invertActive) tags.push('あべこべ');
+                    const hsValNum = parseFloat(hsInput.value) || 1;
+                    if (Math.abs(hsValNum - 1) > 0.0001) tags.push(`HS:${hsValNum}`);
+                    const modifierText = tags.join(' ');
+                    ctx.save();
+                    ctx.font = 'bold 90px "DFPKanteiryu","KaiTi",sans-serif';
+                    ctx.fillStyle = '#e0d5c5';
+                    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                    ctx.shadowBlur = 4;
+                    ctx.fillText(displayTitle, 12, 90);
+                    if (diff || lv) {
+                        ctx.font = 'bold 72px "DFPKanteiryu","KaiTi",sans-serif';
+                        let secondLine = diff + (lv ? lv : '');
+                        if (modifierText) secondLine += ' ' + modifierText;
+                        ctx.fillText(secondLine, 12, 180);
+                    }
+                    ctx.shadowColor = 'transparent';
+                    ctx.shadowBlur = 0;
+                    ctx.restore();
+                }
+                let y = musicY;
+                currentRowLayouts.forEach((l, i) => {
+                    ctx.drawImage(rowCanvases[i].canvas, maxFirstX - rowCanvases[i].firstX, y);
+                    if (i < currentRowLayouts.length - 1) {
+                        let gap;
+                        if (useGroupIndex) gap = (currentRowLayouts[i].groupIndex !== currentRowLayouts[i + 1]
+                            .groupIndex) ? ROW_TOTAL_HEIGHT + EXTRA_GAP_SAME_BRANCH : ROW_TOTAL_HEIGHT;
+                        else gap = ROW_TOTAL_HEIGHT + EXTRA_GAP_SAME_BRANCH;
+                        y += gap;
+                    }
+                });
+                const url = mc.toDataURL('image/png');
+                const w = window.open('');
+                if (w) {
+                    w.document.write(
+                        `<img src="${url}" style="max-width:100%;height:auto;background:#272727;">`);
+                    w.document.title = '下载图片';
+                } else {
+                    alert('请允许弹出窗口');
+                }
+            });
 
             btnEditMap.addEventListener('click', openMapEditor);
             btnAddMapRow.addEventListener('click', () => addMapRow());
@@ -2832,11 +2943,12 @@ btnDownloadImage.addEventListener('click', () => {
                 await loadCustomFont();
                 await loadChineseMap();
                 await loadExamples();
+                updateImageSources(); 
                 updateTjaModeUI();
+                bindImageEventsWithCompleteCheck();
                 updateStyleButtonIcon();
                 textarea.value = '';
                 textarea.setAttribute('wrap', 'off');
-                render();
             }
             initialize();
         })();
