@@ -2035,7 +2035,7 @@ function render() {
     let loadingToken;
     if (tjaModeActive) {
         loadingToken = showLoading();
-    }
+    }else hideLoadingImmediate();
     let rowLayouts;
     const hsVal = parseFloat(hsInput.value) || 1,
         hsScale = hsVal > 0 ? hsVal : 1;
@@ -2792,6 +2792,7 @@ btnDownloadImage.addEventListener('click', () => {
             }
 
             async function enterTJAMode() {
+                hideLoadingImmediate();
                 showLoading();
                 tjaModeActive = true;
                 btnModeSwitch.textContent = '切换到ox模式';
@@ -2814,6 +2815,7 @@ btnDownloadImage.addEventListener('click', () => {
                 if (clear) textarea.value = '';
                 courseContainer.style.display = 'none';
                 selectedCourse = null;
+                hideLoadingImmediate();
                 render();
             }
 
