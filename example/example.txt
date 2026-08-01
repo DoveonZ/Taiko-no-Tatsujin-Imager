@@ -41,9 +41,9 @@ ooo ooo ooo xxx ooo ooo ooo xxx
 (ooxooxooxx)oxoxo(xoxoxox)
 
 #Aragami
-|oooxxxoooxxx|ooxxooooxxxx
-|oooxxxoooxxx|oxxxoxxxoxox
-|ooooxxooooxx|ooxxooxxooxx
+|oooxxxoooxxx|ooxxooooxxxx|,
+|oooxxxoooxxx|oxxxoxxxoxox|,
+|ooooxxooooxx|ooxxooxxooxx|,
 |oxoxoxox(oxoxox|o)ooooooxoo(ooo|o)
 
 #里Dangan Notes
