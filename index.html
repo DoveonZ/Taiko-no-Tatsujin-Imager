@@ -898,16 +898,19 @@
     <div class="info-bar" id="infoBar"></div>
 
     <!-- 图例/教程区 -->
-    <div class="tutorial-bottom" id="tutorialBox">
-      <span>高亮：<code>*</code> 后首个音符发光</span>
-      <span>小节线：<code>|</code> <code>/</code> <code>\</code></span>
-      <span>长条：<code>l...l</code> 小 <code>L...L</code> 大</span>
-      <span>长条身：<code>-</code> 小 <code>=</code> 大</span>
-      <span>气球身：<code>+</code></span>
-    </div>
     <div class="legend-bottom" id="legendBox">
-      <span>默认间隔16分</span><span><code>( )</code> ×1.5</span><span><code>[ ]</code> ×2</span><span><code>{ }y</code> y分音</span>
-      <span>空格空音符</span><span>o/x 小</span><span>O/X 大</span><span>c 气球</span><span>l/L 长条</span> <span>- 长条身</span><span>= 大长条身</span><span>+ 气球身</span>
+      <span>空格 = 空音符</span>
+      <span><code>o</code>/<code>O</code> 咚</span>
+      <span><code>x</code>/<code>X</code> 咔</span>
+      <span><code>c</code> 气球</span>
+      <span><code>l</code>/<code>L</code> 黄条</span>
+      <span>默认间隔16分</span>
+      <span><code>( )</code> ×1.5</span>
+      <span><code>[ ]</code> ×2</span>
+      <span><code>{ }y</code> y分音</span>
+      <span>小节线：<code>|</code></span>
+      <span>高亮：<code>*</code> 后首个音符发光</span>
+      <span>半透明：<code>~</code> 后首个音符半透明</span>
       <button class="btn" id="btnEditMap" style="margin-left:auto;">✏️ 编辑映射</button>
     </div>
   </div>
@@ -1284,7 +1287,7 @@
       function preloadAllImages() {
         const types = ['o', 'x', 'oo', 'xx', 'c1', 'c2', 'c3', 'l1', 'll1', 'l2', 'll2', 'l3', 'll3'];
         [0, 1, 2].forEach(style => {
-          const prefix = `img/Notes/${style}/`;
+          const prefix = `img/notes/${style}/`;
           types.forEach(type => {
             const img = new Image();
             const key = style + '-' + type;
@@ -3036,11 +3039,10 @@ function openImagePreview(canvas) {
 
       function updateTjaModeUI() {
         document.querySelectorAll('.tja-only').forEach(e => e.style.display = tjaModeActive ? 'inline-flex' : 'none');
+        legendBox.style.display = tjaModeActive ? 'none' : '';
         tjaUploadBtn.style.display = tjaModeActive ? 'inline-flex' : 'none';
         btnClearBars.style.display = tjaModeActive ? 'none' : 'inline-flex';
         btnIgnoreScroll.classList.toggle('active', visualFocusActive);
-        legendBox.style.display = tjaModeActive ? 'none' : '';
-        tutorialBox.style.display = tjaModeActive ? 'none' : 'flex';
         btnTJAtoText.style.display = 'none';
         hsControlItem.style.display = tjaModeActive ? 'none' : 'inline-flex';
         btnHighlightSelection.style.display = tjaModeActive ? 'none' : 'inline-flex';
@@ -3128,8 +3130,6 @@ function openImagePreview(canvas) {
           hsScale = hsVal > 0 ? hsVal : 1;
         const doInvert = invertActive,
           doSmall = smallifyActive;
-        tutorialBox.style.display = tjaModeActive ? 'none' : 'flex';
-        legendBox.style.display = tjaModeActive ? 'none' : '';
         divergenceWarning.style.display = 'none';
         let inputValue = textarea.value.trim();
         if (!tjaModeActive && inputValue === '') {
@@ -4110,6 +4110,12 @@ function openImagePreview(canvas) {
         selectedCourse = null;
         tjaCourses = parseTJA(tjaContent);
         selectedCourse = tjaCourses.length ? tjaCourses[0] : null;
+            // 重置 HS 设定
+        hsInput.value = 1.0;
+        if (hsOverrideActive) {
+            hsOverrideActive = false;
+            btnHsAdjust.classList.remove('active');
+        }
         updateCourseButtons();
         transparentBgActive = false;
         bgMergeCheckbox.checked = false;
@@ -4119,6 +4125,12 @@ function openImagePreview(canvas) {
       function exitTJAMode(clear = true) {
         tjaModeActive = false;
         btnModeSwitch.textContent = '切换到TJA模式';
+                // 重置 HS 设定
+        hsInput.value = 1.0;
+        if (hsOverrideActive) {
+            hsOverrideActive = false;
+            btnHsAdjust.classList.remove('active');
+        }
         updateTjaModeUI();
         if (clear) textarea.value = '';
         courseContainer.style.display = 'none';
