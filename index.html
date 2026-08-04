@@ -947,6 +947,41 @@
   </select>
   <button class="btn btn-primary" id="btnDownloadNameplate">下载名牌</button>
 </div>
+
+<!-- 难度/皇冠/评价控制区 -->
+<div style="margin-top:16px; display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
+  <div style="display:flex; align-items:center; gap:6px;">
+    <span>难度:</span>
+    <select id="diffSelect" style="padding:4px 8px; border:2px solid var(--border); border-radius:6px; background:var(--input-bg); height:36px;">
+      <option value="1">梅</option>
+      <option value="2">竹</option>
+      <option value="3">松</option>
+      <option value="4" selected>鬼</option>
+      <option value="5">里</option>
+    </select>
+  </div>
+  <div style="display:flex; align-items:center; gap:6px;">
+    <span>皇冠:</span>
+    <select id="crownSelect" style="padding:4px 8px; border:2px solid var(--border); border-radius:6px; background:var(--input-bg); height:36px;">
+      <option value="-1" selected>无</option>
+      <option value="0">银</option>
+      <option value="1">金</option>
+      <option value="2">虹</option>
+    </select>
+  </div>
+  <div style="display:flex; align-items:center; gap:6px;">
+    <span>评价:</span>
+    <select id="scoreSelect" style="padding:4px 8px; border:2px solid var(--border); border-radius:6px; background:var(--input-bg); height:36px;">
+      <option value="-1" selected>无</option>
+      <option value="0">白粋</option>
+      <option value="1">铜粋</option>
+      <option value="2">银粋</option>
+      <option value="3">金雅</option>
+      <option value="4">粉雅</option>
+      <option value="5">紫雅</option>
+      <option value="6">極</option>
+    </select>
+  </div>
 </div>
   </div>
 
@@ -1287,7 +1322,7 @@
       function preloadAllImages() {
         const types = ['o', 'x', 'oo', 'xx', 'c1', 'c2', 'c3', 'l1', 'll1', 'l2', 'll2', 'l3', 'll3'];
         [0, 1, 2].forEach(style => {
-          const prefix = `img/Notes/${style}/`;
+          const prefix = `img/notes/${style}/`;
           types.forEach(type => {
             const img = new Image();
             const key = style + '-' + type;
@@ -1313,7 +1348,7 @@
           loaded['bar'] = false;
           checkAllLoaded();
         };
-        barImage.src = 'img/Bar.png';
+        barImage.src = 'img/bar.png';
       }
 
      function replaceChineseNotes(str) {
@@ -4351,6 +4386,68 @@ function updateNameplatePreview() {
   }
 }
 
+document.getElementById('nameplateStyle').addEventListener('change', updateNameplatePreview);
+// ========== 名牌图标（难度0-4，皇冠银0金1虹2，评价白粋0铜粋1银粋2金雅3粉雅4紫雅5極6） ==========
+let iconCrownImg = null;
+let iconScoreImg = null;
+
+function updateIcons() {
+  const diff = parseInt(document.getElementById('diffSelect').value);   // 0-4
+  const crown = parseInt(document.getElementById('crownSelect').value); // -1,0,1,2
+  const score = parseInt(document.getElementById('scoreSelect').value); // -1,0-6
+
+  // 更新皇冠
+  if (crown === -1) {
+    iconCrownImg = null;
+  } else {
+    const crownNum = diff * 10 + crown;
+    const img = new Image();
+    img.onload = () => { iconCrownImg = img; updateNameplatePreview(); };
+    img.onerror = () => { iconCrownImg = null; updateNameplatePreview(); };
+    img.src = `img/Crown/${crownNum}.png`;
+  }
+
+  // 更新评价
+  if (score === -1) {
+    iconScoreImg = null;
+  } else {
+    const scoreNum = diff * 10 + score;
+    const img = new Image();
+    img.onload = () => { iconScoreImg = img; updateNameplatePreview(); };
+    img.onerror = () => { iconScoreImg = null; updateNameplatePreview(); };
+    img.src = `img/Score/${scoreNum}.png`;
+  }
+
+  updateNameplatePreview();
+}
+
+// 绑定事件
+['diffSelect', 'crownSelect', 'scoreSelect'].forEach(id => {
+  document.getElementById(id).addEventListener('change', updateIcons);
+});
+
+// 初始加载（默认鬼、无皇冠、无评价）
+updateIcons();
+
+// 重写 drawNameplate
+const _originalDrawNameplate = drawNameplate;
+drawNameplate = function() {
+  _originalDrawNameplate();
+
+  const canvas = document.getElementById('nameplateCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  const scale = 0.75;
+  const size = 80 * scale;   // 60px
+
+  if (iconCrownImg) {
+    ctx.drawImage(iconCrownImg, 18, 13, size, size);
+  }
+  if (iconScoreImg) {
+    ctx.drawImage(iconScoreImg, 18, 66, size, size);
+  }
+};
 document.getElementById('nameplateStyle').addEventListener('change', updateNameplatePreview);
 document.getElementById('nameplateText').addEventListener('input', updateNameplatePreview);
 
