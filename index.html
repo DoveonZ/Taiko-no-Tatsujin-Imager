@@ -886,6 +886,10 @@
           <button class="btn" id="exampleDropdownBtn">📋 快捷示例</button>
           <div class="example-dropdown" id="exampleDropdown"></div>
         </div>
+        <div class="control-item" id="rowSpacingItem">
+          <label for="rowSpacingInput" style="font-weight:bold;">行距</label>
+          <input type="number" id="rowSpacingInput" value="0.73" step="0.01" min="0.1" />
+        </div>
         <button class="btn btn-primary" id="btnDownloadImage">下载图片</button>
       </div>
       <div id="courseContainer" style="display:none;" class="course-row"></div>
@@ -899,19 +903,19 @@
 
     <!-- 图例/教程区 -->
     <div class="legend-bottom" id="legendBox">
-      <span>高亮：<code>*</code> 后首个音符发光</span>
-      <span>半透明：<code>~</code> 后首个音符半透明</span>
-      <span>小节线：<code>|</code></span>
-      <span>默认间隔16分</span>
-      <span><code>( )</code> ×1.5</span>
-      <span><code>[ ]</code> ×2</span>
-      <span><code>{ }y</code> y分音</span>
-      <span>空格 = 空音符</span>
       <span><code>o</code>/<code>O</code> 咚</span>
       <span><code>x</code>/<code>X</code> 咔</span>
       <span><code>c</code> 气球</span>
       <span><code>l</code>/<code>L</code> 黄条</span>
-      <button class="btn" id="btnEditMap" style="margin-left:auto;">✏️ 编辑映射</button>
+      <span>空格 = 空音符</span>
+      <span>默认间隔16分</span>
+      <span><code>( )</code> ×1.5</span>
+      <span><code>[ ]</code> ×2</span>
+      <span><code>{ }y</code> y分音</span>
+      <span>高亮：<code>*</code> 后首个音符发光</span>
+      <span>半透明：<code>~</code> 后首个音符半透明</span>
+      <span>小节线：<code>|</code></span>
+      <button class="btn" id="btnEditMap" style="margin-left:auto;">编辑映射</button>
     </div>
   </div>
   <!-- 歌曲名牌页面（默认隐藏） -->
@@ -1144,6 +1148,8 @@
       const sidebarBtns = document.querySelectorAll('.sidebar-menu-btn');
       const taikoPage = document.getElementById('appContainer');      // 谱面页面
       const nameplatePage = document.getElementById('nameplateContainer'); // 名牌页面
+      const rowSpacingInput = document.getElementById('rowSpacingInput');
+      const rowSpacingItem = document.getElementById('rowSpacingItem');
 
       // ==================== 常量与全局变量 ====================
       const IMG_SMALL = 106,
@@ -1165,6 +1171,7 @@
       let canvasCache = new Map();
       let randomActive = false;
       let branchViewMode = 'M';
+      let rowSpacing = 0.73;   // 行距倍率
       let doubleViewMode = 'SINGLE';
       let rowMergeCache = new Map();
       let imgOSmall, imgXSmall, imgOBig, imgXBig,
@@ -1351,15 +1358,23 @@
       }
 
      function replaceChineseNotes(str) {
-    let result = str;
-    // 将所有键按长度降序排列，保证多字符母串先替换
-    const keys = Object.keys(chineseNoteMap).sort((a, b) => b.length - a.length);
-    for (const ch of keys) {
-        const replacement = chineseNoteMap[ch];
-        result = result.replaceAll(ch, replacement);
-    }
-    return result;
-}
+          const lines = str.split('\n');
+          const resultLines = lines.map(line => {
+              // 如果该行以"标注"开头（忽略前导空格），不进行任何替换
+              if (line.trimStart().startsWith('标注')) {
+                  return line;
+              }
+              // 原替换逻辑
+              let result = line;
+              const keys = Object.keys(chineseNoteMap).sort((a, b) => b.length - a.length);
+              for (const ch of keys) {
+                  const replacement = chineseNoteMap[ch];
+                  result = result.replaceAll(ch, replacement);
+              }
+              return result;
+          });
+          return resultLines.join('\n');
+      }
 
       function normalize(s) {
         return s.replace(/（/g, '(').replace(/）/g, ')').replace(/【/g, '[').replace(/】/g, ']').replace(/｛/g, '{').replace(/｝/g, '}').replace(/，/g, ' ').replace(/,/g, ' ');
@@ -1389,6 +1404,7 @@
           sliderStack = [],
           curlIntervals = [];
         let globalIdx = 0;
+        let lineStartIndex = 0;
 
         function push(e) {
           cur.push(e);
@@ -1403,16 +1419,40 @@
             if (i < curlIntervals.length) curlIntervals[i] *= factor;
           }
         }
+
         for (let i = 0; i < norm.length; i++) {
           const ch = norm[i];
           if (ch === '\n') {
             while (sliderStack.length) sliderStack.pop().el.hasTail = false;
-            if (cur.length) rows.push(cur);
-            cur = [];
-            if (!'()[]{}'.includes(ch)) {
-              pendHigh = false;
-              pendBar = false;
+
+            const lineText = norm.slice(lineStartIndex, i).trim();
+
+            // 如果当前行以“标注”开头，则作为上一行的标注处理，不产生新行
+            if (lineText.startsWith('标注')) {
+              const annotateStr = lineText.slice(2).trim();
+              if (rows.length > 0) {
+                const lastElements = rows[rows.length - 1];
+                const chars = [...annotateStr];
+                let idx = 0;
+                for (const el of lastElements) {
+                  if (el.type !== 'space' && el.type !== 'sliderBody' && el.type !== 'bigSliderBody' && el.type !== 'balloonBody') {
+                    if (idx < chars.length) {
+                      el.annotation = chars[idx++];
+                    } else break;
+                  }
+                }
+              }
+            } else {
+              // 普通行：如果 cur 非空则推入 rows
+              if (cur.length) rows.push(cur);
+              cur = [];
+              if (!'()[]{}'.includes(ch)) {
+                pendHigh = false;
+                pendBar = false;
+              }
             }
+
+            lineStartIndex = i + 1;
             continue;
           }
           if (ch === '*') {
@@ -1445,9 +1485,7 @@
               if (ch !== ' ') el.highlight = true;
               pendHigh = false;
             }
-            // 半透明效果（~ 作用域）
             if (pendTransparent) {
-              // 只对实际绘制的音符生效（排除空格、滑块/气球身体）
               if (elType !== 'space' && elType !== 'sliderBody' && elType !== 'bigSliderBody' && elType !== 'balloonBody') {
                 el.transparent = true;
               }
@@ -1466,10 +1504,7 @@
                 el.sliderRole = 'head';
                 el.sliderId = id;
                 el.hasTail = true;
-                sliderStack.push({
-                  el,
-                  id
-                });
+                sliderStack.push({ el, id });
               } else {
                 const head = sliderStack.pop();
                 el.sliderRole = 'tail';
@@ -1480,27 +1515,25 @@
             continue;
           }
           if (ch === '(') {
-              typeStack.push('(');
-              factStack.push({ value: 2 / 3, id: bracketIdCounter++ });
-              continue;   // 防止执行到 pendHigh = pendBar = false
+            typeStack.push('(');
+            factStack.push({ value: 2 / 3, id: bracketIdCounter++ });
+            continue;
           } else if (ch === '[') {
-              typeStack.push('[');
-              factStack.push({ value: 1 / 2, id: bracketIdCounter++ });
-              continue;
+            typeStack.push('[');
+            factStack.push({ value: 1 / 2, id: bracketIdCounter++ });
+            continue;
           } else if (ch === '{') {
-              curlLeftStack.push({ startGlobalIndex: globalIdx });
-              continue;
+            curlLeftStack.push({ startGlobalIndex: globalIdx });
+            continue;
           }
           if (ch === ')' || ch === ']' || ch === '}') {
             if (ch === '}') {
-              let j = i + 1,
-                num = '';
+              let j = i + 1, num = '';
               while (j < norm.length && (norm[j].match(/[0-9.]/) || norm[j] === '.')) {
                 if (norm[j] !== '\n') num += norm[j];
                 j++;
               }
-              const y = parseFloat(num) || 16,
-                f = 16 / y;
+              const y = parseFloat(num) || 16, f = 16 / y;
               if (curlLeftStack.length) {
                 const top = curlLeftStack[curlLeftStack.length - 1];
                 const left = top.startGlobalIndex;
@@ -1526,8 +1559,28 @@
           }
           pendHigh = pendBar = false;
         }
+
+        // 处理最后一行（可能没有换行符）
         while (sliderStack.length) sliderStack.pop().el.hasTail = false;
-        if (cur.length) rows.push(cur);
+        const lastLineText = norm.slice(lineStartIndex).trim();
+        if (lastLineText.startsWith('标注')) {
+          const annotateStr = lastLineText.slice(2).trim();
+          if (rows.length > 0) {
+            const lastElements = rows[rows.length - 1];
+            const chars = [...annotateStr];
+            let idx = 0;
+            for (const el of lastElements) {
+              if (el.type !== 'space' && el.type !== 'sliderBody' && el.type !== 'bigSliderBody' && el.type !== 'balloonBody') {
+                if (idx < chars.length) {
+                  el.annotation = chars[idx++];
+                } else break;
+              }
+            }
+          }
+        } else if (cur.length) {
+          rows.push(cur);
+        }
+
         let idx = 0;
         for (const r of rows) {
           for (let i = 0; i < r.length; i++) {
@@ -1763,6 +1816,22 @@
               ctx.fillStyle = '#818181';
               ctx.fillRect(0, grayY, canvas.width, DECORATION_GRAY);
           }
+          // 绘制标注文字
+          const annotateFont = '30px "FZYuan", sans-serif';
+          ctx.save();
+          ctx.font = annotateFont;
+          ctx.fillStyle = '#FFFFFF';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          const annotateY = FIXED_HEIGHT + DECORATION_BLACK + DECORATION_GRAY / 2;
+          for (let i = 0; i < layout.elements.length; i++) {
+            const el = layout.elements[i];
+            if (el.annotation) {
+              const cx = layout.positions[i] + IMG_SMALL / 2 - layout.minX;
+              ctx.fillText(el.annotation, cx, annotateY);
+            }
+          }
+          ctx.restore();
         }
         if (!hideBars) {
           for (let i = 0; i < layout.elements.length; i++) {
@@ -3064,6 +3133,7 @@ function openImagePreview(canvas) {
       }
 
       function updateTjaModeUI() {
+        rowSpacingItem.style.display = tjaModeActive ? 'none' : 'inline-flex';
         document.querySelectorAll('.tja-only').forEach(e => e.style.display = tjaModeActive ? 'inline-flex' : 'none');
         tjaUploadBtn.style.display = tjaModeActive ? 'inline-flex' : 'none';
         btnClearBars.style.display = tjaModeActive ? 'none' : 'inline-flex';
@@ -3303,7 +3373,7 @@ function openImagePreview(canvas) {
               let gap;
               if (useGroupIndex) gap = (rowLayouts[i].groupIndex !== rowLayouts[i + 1].groupIndex) ? ROW_TOTAL_HEIGHT + EXTRA_GAP_SAME_BRANCH : ROW_TOTAL_HEIGHT;
               else gap = ROW_TOTAL_HEIGHT + EXTRA_GAP_SAME_BRANCH;
-              y += gap;
+              y += gap * rowSpacing;
             }
           });
           const div = document.createElement('div');
@@ -3765,7 +3835,11 @@ function openImagePreview(canvas) {
         if (optHsInput) optHsInput.value = hsInput.value;
         render();
       });
-
+      rowSpacingInput.addEventListener('input', () => {
+        rowSpacing = parseFloat(rowSpacingInput.value) || 1.0;
+        showLoading();
+        render();
+      });
       invertToggle.addEventListener('click', () => {
         showLoading();
         invertActive = !invertActive;
@@ -3927,7 +4001,7 @@ function openImagePreview(canvas) {
             let gap;
             if (useGroupIndex) gap = (currentRowLayouts[i].groupIndex !== currentRowLayouts[i + 1].groupIndex) ? ROW_TOTAL_HEIGHT + EXTRA_GAP_SAME_BRANCH : ROW_TOTAL_HEIGHT;
             else gap = ROW_TOTAL_HEIGHT + EXTRA_GAP_SAME_BRANCH;
-            y += gap;
+            y += gap * rowSpacing;
           }
         });
         const url = mc.toDataURL('image/png');
