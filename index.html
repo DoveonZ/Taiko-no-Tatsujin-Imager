@@ -838,7 +838,7 @@
         <label><input type="checkbox" id="showTrackCheckbox" checked /> 显示轨道</label>
       </div>
       <div style="text-align:center;color:var(--preview-text);padding:30px;" id="placeholder">
-        🎼 输入音符字符串开始预览
+        输入音符字符串开始预览
       </div>
       <div id="loadingOverlay">
         <video id="loadingVideo" src="img/loading.mp4" preload="auto" loop muted playsinline width="390" height="195"></video>
@@ -899,18 +899,18 @@
 
     <!-- 图例/教程区 -->
     <div class="legend-bottom" id="legendBox">
+      <span>高亮：<code>*</code> 后首个音符发光</span>
+      <span>半透明：<code>~</code> 后首个音符半透明</span>
+      <span>小节线：<code>|</code></span>
+      <span>默认间隔16分</span>
+      <span><code>( )</code> ×1.5</span>
+      <span><code>[ ]</code> ×2</span>
+      <span><code>{ }y</code> y分音</span>
       <span>空格 = 空音符</span>
       <span><code>o</code>/<code>O</code> 咚</span>
       <span><code>x</code>/<code>X</code> 咔</span>
       <span><code>c</code> 气球</span>
       <span><code>l</code>/<code>L</code> 黄条</span>
-      <span>默认间隔16分</span>
-      <span><code>( )</code> ×1.5</span>
-      <span><code>[ ]</code> ×2</span>
-      <span><code>{ }y</code> y分音</span>
-      <span>小节线：<code>|</code></span>
-      <span>高亮：<code>*</code> 后首个音符发光</span>
-      <span>半透明：<code>~</code> 后首个音符半透明</span>
       <button class="btn" id="btnEditMap" style="margin-left:auto;">✏️ 编辑映射</button>
     </div>
   </div>
@@ -928,6 +928,40 @@
   <div style="display:flex; flex-direction:column; gap:8px;">
     <label>名牌文字</label>
     <input type="text" id="nameplateText" placeholder="输入标题" style="padding:8px; border:2px solid var(--border); border-radius:6px;">
+  </div>
+    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
+    <div style="display:flex; align-items:center; gap:4px;">
+      <label>难度：</label>
+      <select id="nameplateDifficulty" style="padding:4px 8px; border:2px solid var(--border); border-radius:6px; font-family:var(--font-mono); background:var(--input-bg); height:36px;">
+        <option value="1">梅</option>
+        <option value="2">竹</option>
+        <option value="3">松</option>
+        <option value="4" selected>鬼</option>
+        <option value="5">里</option>
+      </select>
+    </div>
+    <div style="display:flex; align-items:center; gap:4px;">
+      <label>皇冠：</label>
+      <select id="nameplateCrown" style="padding:4px 8px; border:2px solid var(--border); border-radius:6px; font-family:var(--font-mono); background:var(--input-bg); height:36px;">
+        <option value="0" selected>无</option>
+        <option value="1">银</option>
+        <option value="2">金</option>
+        <option value="3">虹</option>
+      </select>
+    </div>
+    <div style="display:flex; align-items:center; gap:4px;">
+      <label>评价：</label>
+      <select id="nameplateScore" style="padding:4px 8px; border:2px solid var(--border); border-radius:6px; font-family:var(--font-mono); background:var(--input-bg); height:36px;">
+        <option value="0" selected>无</option>
+        <option value="1">白粋</option>
+        <option value="2">铜粋</option>
+        <option value="3">银粋</option>
+        <option value="4">金雅</option>
+        <option value="5">粉雅</option>
+        <option value="6">紫雅</option>
+        <option value="7">極</option>
+      </select>
+    </div>
   </div>
   <div class="controls-row" style="margin-top:12px;">
   <label>名牌样式：</label>
@@ -947,41 +981,6 @@
   </select>
   <button class="btn btn-primary" id="btnDownloadNameplate">下载名牌</button>
 </div>
-
-<!-- 难度/皇冠/评价控制区 -->
-<div style="margin-top:16px; display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
-  <div style="display:flex; align-items:center; gap:6px;">
-    <span>难度:</span>
-    <select id="diffSelect" style="padding:4px 8px; border:2px solid var(--border); border-radius:6px; background:var(--input-bg); height:36px;">
-      <option value="1">梅</option>
-      <option value="2">竹</option>
-      <option value="3">松</option>
-      <option value="4" selected>鬼</option>
-      <option value="5">里</option>
-    </select>
-  </div>
-  <div style="display:flex; align-items:center; gap:6px;">
-    <span>皇冠:</span>
-    <select id="crownSelect" style="padding:4px 8px; border:2px solid var(--border); border-radius:6px; background:var(--input-bg); height:36px;">
-      <option value="-1" selected>无</option>
-      <option value="0">银</option>
-      <option value="1">金</option>
-      <option value="2">虹</option>
-    </select>
-  </div>
-  <div style="display:flex; align-items:center; gap:6px;">
-    <span>评价:</span>
-    <select id="scoreSelect" style="padding:4px 8px; border:2px solid var(--border); border-radius:6px; background:var(--input-bg); height:36px;">
-      <option value="-1" selected>无</option>
-      <option value="0">白粋</option>
-      <option value="1">铜粋</option>
-      <option value="2">银粋</option>
-      <option value="3">金雅</option>
-      <option value="4">粉雅</option>
-      <option value="5">紫雅</option>
-      <option value="6">極</option>
-    </select>
-  </div>
 </div>
   </div>
 
@@ -1068,10 +1067,10 @@
     </div>
   </div>
   <!-- 图片预览弹窗 -->
-<div id="imagePreviewModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:2000;">
-  <div id="imagePreviewContainer" style="width:100%; height:100%; overflow:hidden; position:relative;">
-    <button id="closePreviewBtn" style="position:absolute; top:10px; right:10px; background:rgba(255,255,255,0.8); border:none; border-radius:50%; width:36px; height:36px; font-size:20px; cursor:pointer; z-index:20;">✕</button>
-    <img id="previewImg" src="" style="position:absolute; left:0; top:0; transform-origin:0 0; cursor:grab;" />
+<div id="imagePreviewModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:2000; align-items:center; justify-content:center;">
+  <div style="position:relative; max-width:90%; max-height:90%; overflow:auto;">
+    <button id="closePreviewBtn" style="position:absolute; top:10px; right:10px; background:rgba(255,255,255,0.8); border:none; border-radius:50%; width:36px; height:36px; font-size:20px; cursor:pointer; z-index:10;">✕</button>
+    <img id="previewImg" src="" style="display:block; max-width:100%; max-height:100%; transform-origin:0 0; cursor:grab;" />
   </div>
 </div>
   <script>
@@ -1322,7 +1321,7 @@
       function preloadAllImages() {
         const types = ['o', 'x', 'oo', 'xx', 'c1', 'c2', 'c3', 'l1', 'll1', 'l2', 'll2', 'l3', 'll3'];
         [0, 1, 2].forEach(style => {
-          const prefix = `img/Notes/${style}/`;
+          const prefix = `img/notes/${style}/`;
           types.forEach(type => {
             const img = new Image();
             const key = style + '-' + type;
@@ -1348,7 +1347,7 @@
           loaded['bar'] = false;
           checkAllLoaded();
         };
-        barImage.src = 'img/Bar.png';
+        barImage.src = 'img/bar.png';
       }
 
      function replaceChineseNotes(str) {
@@ -2153,8 +2152,9 @@
       }
       
       // 获取弹窗元素
-// 弹窗容器与图片
-const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+const imagePreviewModal = document.getElementById('imagePreviewModal');
+const previewImg = document.getElementById('previewImg');
+const closePreviewBtn = document.getElementById('closePreviewBtn');
 
 let imgScale = 1;
 let imgTranslateX = 0, imgTranslateY = 0;
@@ -2169,49 +2169,42 @@ function closeImagePreview() {
   imgTranslateY = 0;
 }
 
-// 关闭按钮（阻止冒泡，直接关闭）
-closePreviewBtn.addEventListener('click', (e) => {
-  e.stopPropagation();
-  closeImagePreview();
+closePreviewBtn.addEventListener('click', closeImagePreview);
+imagePreviewModal.addEventListener('click', (e) => {
+  if (e.target === imagePreviewModal) closeImagePreview();
 });
 
-// 点击容器空白区域关闭（仅当点击目标是容器本身，而非图片）
-imagePreviewContainer.addEventListener('click', (e) => {
-  if (e.target === imagePreviewContainer) {
-    closeImagePreview();
+// 滚轮缩放
+// 滚轮缩放（仅 Ctrl + 滚轮）
+previewImg.addEventListener('wheel', (e) => {
+  if (e.ctrlKey) {
+    e.preventDefault();                     // 阻止浏览器默认的页面缩放
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    imgScale = Math.max(0.2, Math.min(5, imgScale + delta));
+    updateTransform();
+  }
+  // 未按 Ctrl 时不处理，允许事件冒泡（如用于弹窗滚动等）
+}, { passive: false });   // 必须设置 passive: false 才能调用 preventDefault
+
+// 拖拽移动（当图片被放大后）
+previewImg.addEventListener('mousedown', (e) => {
+  if (imgScale > 1) {
+    isDragging = true;
+    dragStartX = e.clientX - imgTranslateX;
+    dragStartY = e.clientY - imgTranslateY;
+    previewImg.style.cursor = 'grabbing';
+    e.preventDefault();
   }
 });
-
-// 滚轮缩放（在任何地方滚动都会缩放，但最好只在图片上）
-previewImg.addEventListener('wheel', (e) => {
-  e.preventDefault();
-  const delta = e.deltaY > 0 ? -0.1 : 0.1;
-  imgScale = Math.max(0.2, Math.min(5, imgScale + delta));
-  updateTransform();
-}, { passive: false });
-
-// 只在图片上启用拖拽
-previewImg.addEventListener('pointerdown', (e) => {
-  isDragging = true;
-  dragStartX = e.clientX - imgTranslateX;
-  dragStartY = e.clientY - imgTranslateY;
-  previewImg.style.cursor = 'grabbing';
-  previewImg.setPointerCapture(e.pointerId);
-  e.stopPropagation();   // 防止触发容器的点击关闭
-  e.preventDefault();
-});
-
-previewImg.addEventListener('pointermove', (e) => {
+window.addEventListener('mousemove', (e) => {
   if (!isDragging) return;
   imgTranslateX = e.clientX - dragStartX;
   imgTranslateY = e.clientY - dragStartY;
   updateTransform();
 });
-
-previewImg.addEventListener('pointerup', (e) => {
+window.addEventListener('mouseup', () => {
   isDragging = false;
   previewImg.style.cursor = imgScale > 1 ? 'grab' : 'default';
-  previewImg.releasePointerCapture(e.pointerId);
 });
 
 function updateTransform() {
@@ -2228,8 +2221,6 @@ function openImagePreview(canvas) {
   imgTranslateY = 0;
   previewImg.style.transform = '';
   previewImg.style.cursor = 'grab';
-  previewImg.style.left = '0';
-  previewImg.style.top = '0';
 }
       function splitBranchRows(rows) {
         return {
@@ -3074,10 +3065,10 @@ function openImagePreview(canvas) {
 
       function updateTjaModeUI() {
         document.querySelectorAll('.tja-only').forEach(e => e.style.display = tjaModeActive ? 'inline-flex' : 'none');
-        legendBox.style.display = tjaModeActive ? 'none' : '';
         tjaUploadBtn.style.display = tjaModeActive ? 'inline-flex' : 'none';
         btnClearBars.style.display = tjaModeActive ? 'none' : 'inline-flex';
         btnIgnoreScroll.classList.toggle('active', visualFocusActive);
+        legendBox.style.display = tjaModeActive ? 'none' : ''; 
         btnTJAtoText.style.display = 'none';
         hsControlItem.style.display = tjaModeActive ? 'none' : 'inline-flex';
         btnHighlightSelection.style.display = tjaModeActive ? 'none' : 'inline-flex';
@@ -3351,9 +3342,12 @@ function openImagePreview(canvas) {
             previewContainer.appendChild(div);
           });
           const allC = previewContainer.querySelectorAll('canvas:not(.preview-checkboxes canvas)');
+          const maxW = Math.max(...Array.from(allC).map(c => c.width));
+          const scale = Math.min(1, (previewContainer.clientWidth - 32) / maxW);
           allC.forEach(c => {
-            c.style.width = c.width + 'px';
-            c.style.height = c.height + 'px';
+            c.style.width = c.width * scale + 'px';
+            c.style.height = c.height * scale + 'px';
+            c.style.maxWidth = '100%';
             // 点击弹窗大图
             c.style.cursor = 'pointer';
             c.addEventListener('click', () => openImagePreview(c));
@@ -4139,18 +4133,18 @@ function openImagePreview(canvas) {
         showLoading();
         tjaModeActive = true;
         btnModeSwitch.textContent = '切换到ox模式';
-        updateTjaModeUI();
-        const tjaContent = await loadExternalTJA();
-        textarea.value = tjaContent;
-        selectedCourse = null;
-        tjaCourses = parseTJA(tjaContent);
-        selectedCourse = tjaCourses.length ? tjaCourses[0] : null;
             // 重置 HS 设定
         hsInput.value = 1.0;
         if (hsOverrideActive) {
             hsOverrideActive = false;
             btnHsAdjust.classList.remove('active');
         }
+        updateTjaModeUI();
+        const tjaContent = await loadExternalTJA();
+        textarea.value = tjaContent;
+        selectedCourse = null;
+        tjaCourses = parseTJA(tjaContent);
+        selectedCourse = tjaCourses.length ? tjaCourses[0] : null;
         updateCourseButtons();
         transparentBgActive = false;
         bgMergeCheckbox.checked = false;
@@ -4240,7 +4234,7 @@ function openImagePreview(canvas) {
             if (nameplateImages.bars.length === 12 && 
                 nameplateLoaded.shadow && 
                 nameplateLoaded.overlay) {
-              drawNameplate();
+              loadIconsAndRedraw();
             } else {
               // 如果未加载完，注册一次性事件
               const checkAndDraw = setInterval(() => {
@@ -4248,7 +4242,7 @@ function openImagePreview(canvas) {
                     nameplateLoaded.shadow && 
                     nameplateLoaded.overlay) {
                   clearInterval(checkAndDraw);
-                  drawNameplate();
+                  loadIconsAndRedraw();
                 }
               }, 100);
             }
@@ -4280,7 +4274,56 @@ const nameplateImages = {
   overlay: null
 };
 const nameplateLoaded = {};
+// 图标缓存
+let crownCache = {};
+let scoreCache = {};
 
+function getIconKey(diff, type) {
+  return `${diff}-${type}`;
+}
+
+function loadIcon(path, cacheObj, key) {
+  if (cacheObj[key]) {
+    return Promise.resolve(cacheObj[key]);
+  }
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      cacheObj[key] = img;
+      resolve(img);
+    };
+    img.onerror = reject;
+    img.src = path;
+  });
+}
+
+async function loadIconsAndRedraw() {
+  const canvas = document.getElementById('nameplateCanvas');
+  if (!canvas) return;
+
+  const diff = parseInt(document.getElementById('nameplateDifficulty')?.value) || 4;
+  const crown = parseInt(document.getElementById('nameplateCrown')?.value) || 0;
+  const score = parseInt(document.getElementById('nameplateScore')?.value) || 0;
+
+  let crownImg = null;
+  let scoreImg = null;
+  const promises = [];
+
+  if (crown > 0) {
+    const crownPath = `img/Crown/${diff}${crown - 1}.png`;   // 值减1
+    promises.push(loadIcon(crownPath, crownCache, getIconKey(diff, crown)).then(img => crownImg = img));
+  }
+  if (score > 0) {
+    const scorePath = `img/Score/${diff}${score - 1}.png`;   // 值减1
+    promises.push(loadIcon(scorePath, scoreCache, getIconKey(diff, score)).then(img => scoreImg = img));
+  }
+
+    await Promise.all(promises).catch(err => {
+    console.warn('图标加载失败，将忽略图标:', err);
+    // 即使加载失败，也继续绘制（crownImg, scoreImg 保持 null）
+  });
+  drawNameplate(crownImg, scoreImg);
+}
 function preloadNameplateImages() {
   nameplateImages.shadow = new Image();
   nameplateImages.shadow.src = 'img/Bar/shadow.png';
@@ -4314,12 +4357,12 @@ function maybeUpdateNameplate() {
   const allBarsLoaded = nameplateImages.bars.length === 12 && nameplateImages.bars.every(img => img.complete);
   if (nameplateLoaded.shadow && allBarsLoaded && nameplateLoaded.overlay) {
     if (nameplatePage.style.display !== 'none') {
-      drawNameplate();
+      loadIconsAndRedraw();
     }
   }
 }
 
-function drawNameplate() {
+function drawNameplate(crownImg = null, scoreImg = null) {
   const canvas = document.getElementById('nameplateCanvas');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
@@ -4350,7 +4393,12 @@ function drawNameplate() {
     const y = (height - opH) / 2;
     ctx.drawImage(nameplateImages.overlay, x, y, opW, opH);
   }
-
+  if (crownImg && crownImg.complete && crownImg.naturalWidth > 0) {
+    ctx.drawImage(crownImg, 18, 13, 80 * 0.75, 80 * 0.75);
+  }
+  if (scoreImg && scoreImg.complete && scoreImg.naturalWidth > 0) {
+    ctx.drawImage(scoreImg, 18, 66, 80 * 0.75, 80 * 0.75);
+  }
   // 文字位置
   const textX = width / 2;
   const textY = height / 2;
@@ -4382,79 +4430,20 @@ function drawNameplate() {
 function updateNameplatePreview() {
   // 如果图片还没加载完，等加载完会自动调用 drawNameplate
   if (nameplateLoaded.shadow && nameplateLoaded.overlay && nameplateImages.bars.length === 12 && nameplateImages.bars.every(img => img && img.complete)) {
-    drawNameplate();
+    loadIconsAndRedraw();
   }
 }
 
-document.getElementById('nameplateStyle').addEventListener('change', updateNameplatePreview);
-// ========== 名牌图标（难度0-4，皇冠银0金1虹2，评价白粋0铜粋1银粋2金雅3粉雅4紫雅5極6） ==========
-let iconCrownImg = null;
-let iconScoreImg = null;
-
-function updateIcons() {
-  const diff = parseInt(document.getElementById('diffSelect').value);   // 0-4
-  const crown = parseInt(document.getElementById('crownSelect').value); // -1,0,1,2
-  const score = parseInt(document.getElementById('scoreSelect').value); // -1,0-6
-
-  // 更新皇冠
-  if (crown === -1) {
-    iconCrownImg = null;
-  } else {
-    const crownNum = diff * 10 + crown;
-    const img = new Image();
-    img.onload = () => { iconCrownImg = img; updateNameplatePreview(); };
-    img.onerror = () => { iconCrownImg = null; updateNameplatePreview(); };
-    img.src = `img/Crown/${crownNum}.png`;
-  }
-
-  // 更新评价
-  if (score === -1) {
-    iconScoreImg = null;
-  } else {
-    const scoreNum = diff * 10 + score;
-    const img = new Image();
-    img.onload = () => { iconScoreImg = img; updateNameplatePreview(); };
-    img.onerror = () => { iconScoreImg = null; updateNameplatePreview(); };
-    img.src = `img/Score/${scoreNum}.png`;
-  }
-
-  updateNameplatePreview();
-}
-
-// 绑定事件
-['diffSelect', 'crownSelect', 'scoreSelect'].forEach(id => {
-  document.getElementById(id).addEventListener('change', updateIcons);
-});
-
-// 初始加载（默认鬼、无皇冠、无评价）
-updateIcons();
-
-// 重写 drawNameplate
-const _originalDrawNameplate = drawNameplate;
-drawNameplate = function() {
-  _originalDrawNameplate();
-
-  const canvas = document.getElementById('nameplateCanvas');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-
-  const scale = 0.75;
-  const size = 80 * scale;   // 60px
-
-  if (iconCrownImg) {
-    ctx.drawImage(iconCrownImg, 18, 13, size, size);
-  }
-  if (iconScoreImg) {
-    ctx.drawImage(iconScoreImg, 18, 66, size, size);
-  }
-};
 document.getElementById('nameplateStyle').addEventListener('change', updateNameplatePreview);
 document.getElementById('nameplateText').addEventListener('input', updateNameplatePreview);
+document.getElementById('nameplateDifficulty').addEventListener('change', updateNameplatePreview);
+document.getElementById('nameplateCrown').addEventListener('change', updateNameplatePreview);
+document.getElementById('nameplateScore').addEventListener('change', updateNameplatePreview);
 
 document.getElementById('btnDownloadNameplate').addEventListener('click', () => {
   const canvas = document.getElementById('nameplateCanvas');
   if (!canvas.width) {
-    drawNameplate(); // 强制绘制
+    loadIconsAndRedraw(); // 强制绘制
   }
   const url = canvas.toDataURL('image/png');
   const link = document.createElement('a');
