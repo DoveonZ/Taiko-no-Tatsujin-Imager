@@ -822,6 +822,7 @@
   <div id="sidebar" class="sidebar">
     <button class="sidebar-menu-btn active" data-page="taiko">谱面生成</button>
     <button class="sidebar-menu-btn" data-page="nameplate">歌曲名牌</button>
+    <a href="https://taiko.donders.work/" target="_blank" rel="noopener noreferrer" class="sidebar-menu-btn" style="text-decoration:none; display:block;">更多工具</a>
   </div>
   <div class="app-container layout-ox" id="appContainer">
     <!-- 头部 -->
@@ -1154,6 +1155,7 @@
       // ==================== 常量与全局变量 ====================
       const IMG_SMALL = 106,
         IMG_BIG = 160,
+        IMG_BOMB = 200,
         IMG_BALLOON_W = 253,
         IMG_BALLOON_H = 106;
       const DEFAULT_GAP = 90,
@@ -1176,7 +1178,7 @@
       let rowMergeCache = new Map();
       let imgOSmall, imgXSmall, imgOBig, imgXBig,
         imgC1, imgC2, imgC3,
-        imgL1, imgL1Big, imgL2, imgL2Big, imgL3, imgL3Big;
+        imgL1, imgL1Big, imgL2, imgL2Big, imgL3, imgL3Big, imgA, imgT1, imgT2, imgT3, imgCC;
       const loaded = {};
       const styleImages = {
         0: {},
@@ -1284,6 +1286,11 @@
         imgL2Big = s.ll2;
         imgL3 = s.l3;
         imgL3Big = s.ll3;
+        imgA = s.a;
+        imgT1 = s.t1;
+        imgT2 = s.t2;
+        imgT3 = s.t3;
+        imgCC = s.cc;
         smallifyImgBig.src = s.oo.src;
         smallifyImgSmall.src = s.o.src;
       }
@@ -1326,7 +1333,7 @@
       }
 
       function preloadAllImages() {
-        const types = ['o', 'x', 'oo', 'xx', 'c1', 'c2', 'c3', 'l1', 'll1', 'l2', 'll2', 'l3', 'll3'];
+        const types = ['o', 'x', 'oo', 'xx', 'c1', 'c2', 'c3', 'cc', 'l1', 'll1', 'l2', 'll2', 'l3', 'll3', 'bomb', 'ox', 'a', 't1', 't2', 't3'];
         [0, 1, 2].forEach(style => {
           const prefix = `img/Notes/${style}/`;
           types.forEach(type => {
@@ -1390,6 +1397,17 @@
         return r;
       }
 
+      function getSpecialBgColor(styleCode) {
+        switch (styleCode) {
+          case '': return '#900000';   // 默认 gogo time
+          case 'e': return '#205371';  // 玄人（非 gogo）
+          case 'm': return '#852071';  // 达人（非 gogo）
+          case 'eg': return '#543F5D'; // 玄人+gogo
+          case 'mg': return '#B90C5D'; // 达人+gogo
+          default: return '#900000';
+        }
+      }
+      
       function parseGlobal(input) {
         const norm = normalize(input);
         const rows = [];
@@ -1405,8 +1423,13 @@
           curlIntervals = [];
         let globalIdx = 0;
         let lineStartIndex = 0;
+        let inSpecial = false;       // 是否处于 <> 区间
+        let specialStartIdx = -1;    // 区间第一个音符的索引
 
         function push(e) {
+          if (inSpecial && specialStartIdx === -1) {
+            specialStartIdx = cur.length;   // 记录区间起始索引（即将添加的元素）
+          }
           cur.push(e);
           globalIdx++;
           if (globalIdx > 1) curlIntervals.push(1);
@@ -1455,6 +1478,34 @@
             lineStartIndex = i + 1;
             continue;
           }
+          // 处理特殊背景区间 <>
+          if (ch === '<') {
+              inSpecial = true;
+              specialStartIdx = -1;   // 由 push 时记录
+              continue;
+          }
+          if (ch === '>') {
+              inSpecial = false;
+              const specialEndIdx = cur.length - 1;
+              // 读取修饰字母（e, m, g）
+              let styleCode = '';
+              let j = i + 1;
+              while (j < norm.length && 'emg'.includes(norm[j])) {
+                styleCode += norm[j];
+                j++;
+              }
+              // 更新 i 跳过修饰字母（循环最后会 i++，所以设为 j-1）
+              i = j - 1;
+
+              if (specialStartIdx !== -1 && specialEndIdx >= specialStartIdx) {
+                const color = getSpecialBgColor(styleCode);
+                for (let k = specialStartIdx; k <= specialEndIdx; k++) {
+                  cur[k].bgColor = color;
+                }
+              }
+              specialStartIdx = -1;
+              continue;
+          }
           if (ch === '*') {
             pendHigh = true;
             continue;
@@ -1467,13 +1518,19 @@
             pendBar = true;
             continue;
           }
-          if ('oxOXc -+=lL'.includes(ch) || ch === ' ') {
+          if ('oxOXcC -+=lLbQat'.includes(ch) || ch === ' ') {
             let elType;
             if (ch === ' ') elType = 'space';
             else if (ch === '-') elType = 'sliderBody';
             else if (ch === '=') elType = 'bigSliderBody';
             else if (ch === '+') elType = 'balloonBody';
+            else if (ch === 'b') elType = 'bomb';
+            else if (ch === 'Q') elType = 'oxnote';
+            else if (ch === 'a') elType = 'invisible';
+            else if (ch === 't') elType = 'timer';
+            else if (ch === 'C') elType = 'colorballoon';
             else elType = ch;
+
             const el = {
               type: elType,
               pathFactors: [1, ...factStack],
@@ -1481,36 +1538,53 @@
               hasBar: false,
               curlGapToNext: 1
             };
+
             if (pendHigh) {
               if (ch !== ' ') el.highlight = true;
               pendHigh = false;
             }
+
+            if (elType === 'invisible') {
+                el.transparent = true;
+            }
+
             if (pendTransparent) {
               if (elType !== 'space' && elType !== 'sliderBody' && elType !== 'bigSliderBody' && elType !== 'balloonBody') {
                 el.transparent = true;
               }
               pendTransparent = false;
             }
+
             if (pendBar) {
               el.hasBar = true;
               pendBar = false;
             }
-            if (ch === 'l' || ch === 'L') {
+
+            if (ch === 'l' || ch === 'L' || ch === 't') {   // 不再包含 'C'
               const isBig = ch === 'L';
+              const isTimer = ch === 't';
+              
               el.isSlider = true;
+              el.isBalloon = false;
               el.isBig = isBig;
-              if (sliderStack.length === 0 || sliderStack[sliderStack.length - 1].el.type !== ch) {
+              if (isTimer) el.sliderType = 'timer';
+              
+              // 配对判断：使用 pairChar 而不是 el.type 比较，避免类型不一致
+              if (sliderStack.length === 0 || sliderStack[sliderStack.length - 1].pairChar !== ch) {
                 const id = bracketIdCounter++;
                 el.sliderRole = 'head';
                 el.sliderId = id;
                 el.hasTail = true;
-                sliderStack.push({ el, id });
+                el.pairChar = ch;   // 存储当前字符作为配对标记
+                sliderStack.push({ el, id, pairChar: ch });
               } else {
                 const head = sliderStack.pop();
                 el.sliderRole = 'tail';
                 el.pairId = head.id;
+                el.pairChar = ch;
               }
             }
+
             push(el);
             continue;
           }
@@ -1628,6 +1702,21 @@
       }
 
       function getElementBounds(el, pos) {
+        if (el.type === 'bomb') {
+            const ox = -(IMG_BOMB - IMG_SMALL) / 2;
+            return { left: pos + ox, right: pos + ox + IMG_BOMB };
+        }
+        if (el.type === 'oxnote') {
+            const ox = -(IMG_BIG - IMG_SMALL) / 2;
+            return { left: pos + ox, right: pos + ox + IMG_BIG };
+        }
+        if (el.type === 'invisible' || el.type === 'timer') {
+            return { left: pos, right: pos + IMG_SMALL };
+        }
+        if (el.type === 'colorballoon') {
+            const ox = -(IMG_BIG - IMG_SMALL) / 2;
+            return { left: pos + ox, right: pos + ox + IMG_BIG };
+        }
         if (el.type === 'space') return { left: pos, right: pos + IMG_SMALL };
         if (el.type === 'sliderBody' || el.type === 'bigSliderBody' || el.type === 'balloonBody') return { left: pos, right: pos + IMG_SMALL };
         if (el.isSlider) {
@@ -1655,6 +1744,9 @@
 
       function getElementCenter(el, pos) {
         if (!el) return pos + IMG_SMALL / 2;
+        if (el.type === 'bomb' || el.type === 'oxnote') return pos + IMG_SMALL / 2;
+        if (el.type === 'invisible' || el.type === 'timer') return pos + IMG_SMALL / 2;
+        if (el.type === 'colorballoon') return pos + IMG_BIG / 2;
         if (el.type === 'space' || el.type === 'sliderBody' || el.type === 'bigSliderBody' || el.type === 'balloonBody')
           return pos + IMG_SMALL / 2;
         if (el.isSlider) {
@@ -1800,6 +1892,32 @@
             ctx.fillStyle = getGogoBgColor(layout.branchType || 'COMMON', false);
             ctx.fillRect(0, 0, canvas.width, FIXED_HEIGHT);
           }
+          // 绘制 <> 背景染色
+          // 直接根据 el.bgColor 绘制 <> 背景
+          const defaultTrackColor = getGogoBgColor(layout.branchType || 'COMMON', false);
+          ctx.fillStyle = defaultTrackColor;
+          ctx.fillRect(0, 0, canvas.width, FIXED_HEIGHT); // 确保基础背景已绘制
+
+          // 查找并绘制有 bgColor 的段落
+          let i = 0;
+          while (i < layout.elements.length) {
+            const el = layout.elements[i];
+            if (el.bgColor) {
+              const color = el.bgColor;
+              // 确定同一颜色的连续范围
+              let j = i;
+              while (j < layout.elements.length && layout.elements[j].bgColor === color) {
+                j++;
+              }
+              const startX = getElementCenter(layout.elements[i], layout.positions[i]) - layout.minX;
+              const endX = getElementCenter(layout.elements[j-1], layout.positions[j-1]) - layout.minX;
+              ctx.fillStyle = color;
+              ctx.fillRect(startX, 0, endX - startX, FIXED_HEIGHT);
+              i = j; // 跳过已处理的相同颜色段
+            } else {
+              i++;
+            }
+          }
           ctx.fillStyle = '#000000';
           ctx.fillRect(0, FIXED_HEIGHT, canvas.width, DECORATION_BLACK);
 
@@ -1858,16 +1976,42 @@
           if (ignoredIndices.has(i)) continue;
           if (el.type === 'sliderBody' || el.type === 'bigSliderBody' || el.type === 'balloonBody') continue;
           let dt = el.type;
-          if (randomRow && randomRow[i]) dt = invertType(dt, true);
-          dt = invertType(dt, doInvert);
-          if (doSmallify && dt !== 'c') dt = smallifyType(dt);
-          const isBig = dt === 'O' || dt === 'X';
-          const size = dt === 'c' ? IMG_BALLOON_W : (isBig ? IMG_BIG : IMG_SMALL);
-          const ox = dt === 'c' ? -0.5 : (isBig ? -(IMG_BIG - IMG_SMALL) / 2 : 0);
-          const x = layout.positions[i] + ox;
+          if (dt !== 'bomb' && dt !== 'oxnote' && dt !== 'invisible' && dt !== 'timer' && dt !== 'colorballoon') {
+              if (randomRow && randomRow[i]) dt = invertType(dt, true);
+              dt = invertType(dt, doInvert);
+              if (doSmallify && dt !== 'c') dt = smallifyType(dt);
+              if (doSmallify && dt === 'colorballoon') dt = 'c';
+          }
           const actualStyle = getActualStyle(el, currentStyle);
           const S = styleImages[actualStyle];
-          const img = dt === 'c' ? S.c1 : { o: S.o, x: S.x, O: S.oo, X: S.xx }[dt];
+          let size, ox, img;
+          if (dt === 'bomb') {
+              size = IMG_BOMB;
+              ox = -(IMG_BOMB - IMG_SMALL) / 2;
+              img = S.bomb;
+          } else if (dt === 'oxnote') {
+              size = IMG_BIG;
+              ox = -(IMG_BIG - IMG_SMALL) / 2;
+              img = S.ox;
+          } else if (dt === 'invisible') {
+              size = IMG_SMALL;
+              ox = 0;
+              img = S.a;
+          } else if (dt === 'timer') {
+              size = IMG_SMALL;
+              ox = 0;
+              img = S.t1;   // 仅使用 t1，t2/t3 暂未启用
+          } else if (dt === 'colorballoon') {
+              size = IMG_BIG;
+              ox = -(IMG_BIG - IMG_SMALL) / 2;
+              img = S.cc;
+          } else {
+              const isBig = dt === 'O' || dt === 'X';
+              size = dt === 'c' ? IMG_BALLOON_W : (isBig ? IMG_BIG : IMG_SMALL);
+              ox = dt === 'c' ? -0.5 : (isBig ? -(IMG_BIG - IMG_SMALL) / 2 : 0);
+              img = dt === 'c' ? S.c1 : { o: S.o, x: S.x, O: S.oo, X: S.xx }[dt];
+          }
+          const x = layout.positions[i] + ox;
           items.push({
             order: i,
             draw: () => {
@@ -1907,9 +2051,16 @@
           const gogoVal = headEl ? headEl.gogo : false;
           const actualStyle = getActualStyle({ gogo: gogoVal }, currentStyle);
           const S = styleImages[actualStyle];
-          const hImg = isBig ? S.ll1 : S.l1,
-            mImg = isBig ? S.ll2 : S.l2,
-            tImg = isBig ? S.ll3 : S.l3;
+          let hImg, mImg, tImg;
+          if (headEl?.sliderType === 'timer') {
+              hImg = S.t1;
+              mImg = S.t2;
+              tImg = S.t3;
+          } else {
+              hImg = isBig ? S.ll1 : S.l1;
+              mImg = isBig ? S.ll2 : S.l2;
+              tImg = isBig ? S.ll3 : S.l3;
+          }
           const headOnly = s.headIdx !== -1 && s.tailIdx === -1;
           const tailOnly = s.headIdx === -1 && s.tailIdx !== -1;
           if (headOnly) {
@@ -2324,7 +2475,14 @@ function openImagePreview(canvas) {
           '2': 'x',
           '3': 'O',
           '4': 'X',
-          '7': 'c'
+          '7': 'c',
+          '9': 'colorballoon',
+          'A': 'O',
+          'B': 'X',
+          'C': 'bomb',
+          'D': 'timer',
+          'F': 'invisible',
+          'G': 'oxnote',
         };
         let branchSavedA = 1,
           branchSavedScroll = 1;
@@ -2348,16 +2506,17 @@ function openImagePreview(canvas) {
             let el;
 
             // ----------------- 元素类型生成（保持原逻辑）-----------------
-            if (ch === '5') {
-              const isBig = false;
-              el = {
-                type: 'l', pathFactors: [1], hasBar: false, curlGapToNext: 1,
-                scrollFactor, gogo, isSlider: true, isBig, sliderRole: 'head'
-              };
-              el.sliderId = sliderIdCounter++;
-              el.hasTail = true;
-              sliderStack.push({ el, isBig, isBalloon: false });
-              activeSliderTypes.push('slider');
+            if (ch === '5' || ch === 'D') {
+                const isBig = false;
+                el = {
+                    type: ch === 'D' ? 'timer' : 'l', pathFactors: [1], hasBar: false, curlGapToNext: 1,
+                    scrollFactor, gogo, isSlider: true, isBig, sliderRole: 'head',
+                    sliderType: ch === 'D' ? 'timer' : undefined
+                };
+                el.sliderId = sliderIdCounter++;
+                el.hasTail = true;
+                sliderStack.push({ el, isBig, isBalloon: false });
+                activeSliderTypes.push(ch === 'D' ? 'timer' : 'slider');
             } else if (ch === '6') {
               const isBig = true;
               el = {
@@ -2401,6 +2560,15 @@ function openImagePreview(canvas) {
                   scrollFactor, gogo
                 };
               }
+            }else if (ch === '9') {
+                el = {
+                    type: 'colorballoon', pathFactors: [1], hasBar: false, curlGapToNext: 1,
+                    scrollFactor, gogo, isBalloon: true, sliderRole: 'head'
+                };
+                el.sliderId = sliderIdCounter++;
+                el.hasTail = true;
+                sliderStack.push({ el, isBig: false, isBalloon: true });
+                activeSliderTypes.push('balloon');
             } else if (ch === '0' && activeSliderTypes.length) {
               const currentType = activeSliderTypes[activeSliderTypes.length - 1];
               let bodyType;
@@ -2936,7 +3104,34 @@ function openImagePreview(canvas) {
           endX: s.end - minX
         }));
         // 生成 scroll 分段（用于灰色条变色）
-        
+        // 生成特殊背景染色段
+        // 生成 <> 背景染色段
+        // 生成特殊背景染色段
+        let colorSegments = [];
+        {
+          let currentColor = null;
+          let startX = null;
+          let lastX = null;
+          for (let i = 0; i < elements.length; i++) {
+            const el = elements[i];
+            if (el._virtualTail) continue;
+            const cx = getElementCenter(el, positions[i]) - minX;
+            const color = el.bgColor || null;
+            if (color !== currentColor) {
+              if (currentColor !== null && startX !== null && lastX !== null) {
+                colorSegments.push({ startX: startX, endX: lastX, color: currentColor });
+              }
+              currentColor = color;
+              startX = color !== null ? cx : null;
+              lastX = color !== null ? cx : null;
+            } else {
+              lastX = cx;   // 更新当前颜色段的结束位置
+            }
+          }
+          if (currentColor !== null && startX !== null && lastX !== null) {
+            colorSegments.push({ startX: startX, endX: lastX, color: currentColor });
+          }
+        }
         // BPM 变化点列表
         let bpmList = [];
         let lastBpm = null;
@@ -3008,7 +3203,8 @@ function openImagePreview(canvas) {
           endBarCanvasX,
           bpmList: bpmList.length ? bpmList : null,
           scrollList: scrollList.length ? scrollList : null,
-          scrollSegments: scrollSegments.length ? scrollSegments : null
+          scrollSegments: scrollSegments.length ? scrollSegments : null,
+          colorSegments: colorSegments.length ? colorSegments : null
         };
       }
 
@@ -3861,7 +4057,9 @@ function openImagePreview(canvas) {
                   return;
               }
               randomActive = true;
-              randomMap = currentRowLayouts.map(l => l.elements.map(e => e.type !== 'space' && Math.random() < 0.5));
+              randomMap = currentRowLayouts.map(l =>
+                  l.elements.map(e => (['o', 'x', 'O', 'X'].includes(e.type) && Math.random() < 0.5))
+              );
               btnRandom.classList.add('active');
           }
           render();
@@ -4209,6 +4407,8 @@ function openImagePreview(canvas) {
         btnModeSwitch.textContent = '切换到ox模式';
             // 重置 HS 设定
         hsInput.value = 1.0;
+        rowSpacingInput.value = 1.0;
+        rowSpacing = 1.0;
         if (hsOverrideActive) {
             hsOverrideActive = false;
             btnHsAdjust.classList.remove('active');
@@ -4230,6 +4430,8 @@ function openImagePreview(canvas) {
         btnModeSwitch.textContent = '切换到TJA模式';
                 // 重置 HS 设定
         hsInput.value = 1.0;
+        rowSpacingInput.value = 0.73;
+        rowSpacing = 0.73;
         if (hsOverrideActive) {
             hsOverrideActive = false;
             btnHsAdjust.classList.remove('active');
