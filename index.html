@@ -1159,7 +1159,10 @@
         IMG_BALLOON_W = 253,
         IMG_BALLOON_H = 106,
         IMG_SWEET_POTATO_W = 288,
-        IMG_SWEET_POTATO_H = 170;
+        IMG_SWEET_POTATO_H = 170,
+        IMG_BELL = { w: 150, h: 175, centerFromBottom: 75 },
+        IMG_RATTLE = { w: 160, h: 235, centerFromTop: 80 },
+        IMG_HUGE = 305;
       const DEFAULT_GAP = 90,
         FIXED_HEIGHT = 195,
         MAX_GAP_SUM = 67 * DEFAULT_GAP;
@@ -1180,7 +1183,7 @@
       let rowMergeCache = new Map();
       let imgOSmall, imgXSmall, imgOBig, imgXBig,
         imgC1, imgC2, imgC3,
-        imgL1, imgL1Big, imgL2, imgL2Big, imgL3, imgL3Big, imgA, imgT1, imgT2, imgT3, imgCC, imgP, imgBomb, imgOX;
+        imgL1, imgL1Big, imgL2, imgL2Big, imgL3, imgL3Big, imgA, imgT1, imgT2, imgT3, imgCC, imgP, imgBomb, imgOX, imgS, imgU;
       const loaded = {};
       const styleImages = {
         0: {},
@@ -1294,6 +1297,9 @@
         imgT2 = s.t2;
         imgT3 = s.t3;
         imgCC = s.cc;
+        imgOX = s.ox;
+        imgS = s.s;
+        imgU = s.u;
         smallifyImgBig.src = s.oo.src;
         smallifyImgSmall.src = s.o.src;
       }
@@ -1336,7 +1342,7 @@
       }
 
       function preloadAllImages() {
-        const types = ['o', 'x', 'oo', 'xx', 'c1', 'c2', 'c3', 'cc', 'l1', 'll1', 'l2', 'll2', 'l3', 'll3', 'p', 'bomb', 'ox', 'a', 't1', 't2', 't3'];
+        const types = ['o', 'x', 'oo', 'xx', 'c1', 'c2', 'c3', 'cc', 'l1', 'll1', 'l2', 'll2', 'l3', 'll3', 'p', 'bomb', 'ox', 'a', 't1', 't2', 't3', 's', 'u'];
         [0, 1, 2].forEach(style => {
           const prefix = `img/Notes/${style}/`;
           types.forEach(type => {
@@ -1472,6 +1478,25 @@
             i += marker.length - 1;   // 跳过标记中多余字符（循环末尾 i++）
             continue;
           }
+          // 巨大音符：hO/ho -> 巨大咚，hX/hx -> 巨大咔
+          if (ch === 'h' && i + 1 < norm.length && 'OoXx'.includes(norm[i + 1])) {
+            const nextCh = norm[i + 1];
+            const hugeType = (nextCh === 'O' || nextCh === 'o') ? 'hugeO' : 'hugeX';
+            const el = {
+              type: hugeType,
+              pathFactors: [1, ...factStack],
+              highlight: false,
+              hasBar: false,
+              curlGapToNext: 1
+            };
+            if (pendHigh) { el.highlight = true; pendHigh = false; }
+            if (pendTransparent) { el.transparent = true; pendTransparent = false; }
+            if (pendBar) { el.hasBar = true; pendBar = false; }
+            if (currentBgMode !== 'n') el.bgColor = getSpecialBgColor(currentBgMode);
+            push(el);
+            i++; // 跳过下一个字符
+            continue;
+          }
           if (ch === '\n') {
             while (sliderStack.length) sliderStack.pop().el.hasTail = false;
 
@@ -1518,7 +1543,7 @@
             pendBar = true;
             continue;
           }
-          if ('oxOXcC -+=lLpbQat'.includes(ch) || ch === ' ') {
+          if ('oxOXcC -+=lLpbQatsu'.includes(ch) || ch === ' ') {
             let elType;
             if (ch === ' ') elType = 'space';
             else if (ch === '-') elType = 'sliderBody';
@@ -1530,6 +1555,8 @@
             else if (ch === 'a') elType = 'invisible';
             else if (ch === 't') elType = 'timer';
             else if (ch === 'C') elType = 'colorballoon';
+            else if (ch === 's') elType = 'bell';
+            else if (ch === 'u') elType = 'rattle';
             else elType = ch;
 
             const el = {
@@ -1706,6 +1733,18 @@
       }
 
       function getElementBounds(el, pos) {
+        if (el.type === 'bell') {
+            const left = pos + IMG_SMALL / 2 - IMG_BELL.w / 2;
+            return { left, right: left + IMG_BELL.w };
+        }
+        if (el.type === 'rattle') {
+            const left = pos + IMG_SMALL / 2 - IMG_RATTLE.w / 2;
+            return { left, right: left + IMG_RATTLE.w };
+        }
+        if (el.type === 'hugeO' || el.type === 'hugeX') {
+            const left = pos - (IMG_HUGE - IMG_SMALL) / 2;
+            return { left, right: left + IMG_HUGE };
+        }
         if (el.type === 'c') {
             return { left: pos - 0.5, right: pos - 0.5 + IMG_BALLOON_W };
         }
@@ -1754,6 +1793,9 @@
       }
 
       function getElementCenter(el, pos) {
+        if (el.type === 'bell') return pos;      // 中心水平位置仍是 pos
+        if (el.type === 'rattle') return pos;
+        if (el.type === 'hugeO' || el.type === 'hugeX') return pos + IMG_SMALL / 2;
         if (!el) return pos + IMG_SMALL / 2;
         if (el.type === 'bomb' || el.type === 'oxnote') return pos + IMG_SMALL / 2;
         if (el.type === 'sweetPotato') return pos + 80;
@@ -1906,6 +1948,8 @@
 
       function invertType(t, inv) {
         if (!inv || t === 'c') return t;
+        if (t === 'hugeO') return 'hugeX';
+        if (t === 'hugeX') return 'hugeO';
         return { o: 'x', x: 'o', O: 'X', X: 'O' }[t] || t;
       }
 
@@ -2004,7 +2048,7 @@
           if (ignoredIndices.has(i)) continue;
           if (el.type === 'sliderBody' || el.type === 'bigSliderBody' || el.type === 'balloonBody') continue;
           let dt = el.type;
-          if (dt !== 'bomb' && dt !== 'oxnote' && dt !== 'invisible' && dt !== 'timer' && dt !== 'colorballoon' && dt !== 'sweetPotato') {
+          if (dt !== 'bomb' && dt !== 'oxnote' && dt !== 'invisible' && dt !== 'timer' && dt !== 'colorballoon' && dt !== 'sweetPotato' && dt !== 'bell' && dt !== 'rattle') {
               if (randomRow && randomRow[i]) dt = invertType(dt, true);
               dt = invertType(dt, doInvert);
               if (doSmallify && dt !== 'c') dt = smallifyType(dt);
@@ -2037,6 +2081,19 @@
               size = IMG_BIG;
               ox = -(IMG_BIG - IMG_SMALL) / 2;
               img = S.cc;
+          } else if (dt === 'bell') {
+              ox = -IMG_BELL.w / 2 + IMG_SMALL / 2;  // 使中心在 pos
+              img = S.s;
+              // 需要特殊处理绘制时的宽高与 y 偏移
+          } else if (dt === 'rattle') {
+              ox = -IMG_RATTLE.w / 2 + IMG_SMALL / 2;
+              img = S.u;
+          } else if (dt === 'hugeO') {
+              ox = -(IMG_HUGE - IMG_SMALL) / 2;
+              img = S.oo;
+          } else if (dt === 'hugeX') {
+              ox = -(IMG_HUGE - IMG_SMALL) / 2;
+              img = S.xx;
           } else {
               const isBig = dt === 'O' || dt === 'X';
               size = dt === 'c' ? IMG_BALLOON_W : (isBig ? IMG_BIG : IMG_SMALL);
@@ -2057,9 +2114,19 @@
                 ctx.globalAlpha = 0.5;
               }
               if (img && img.complete) {
-                  if (dt === 'c') ctx.drawImage(img, x, 97.5 - IMG_BALLOON_H / 2, size, IMG_BALLOON_H);
-                  else if (dt === 'sweetPotato') ctx.drawImage(img, x, 97.5 - IMG_SWEET_POTATO_H / 2, size, IMG_SWEET_POTATO_H);
-                  else ctx.drawImage(img, x, 97.5 - size / 2, size, size);
+                  if (dt === 'c') {
+                      ctx.drawImage(img, x, 97.5 - IMG_BALLOON_H / 2, size, IMG_BALLOON_H);
+                  } else if (dt === 'bell') {
+                      ctx.drawImage(img, x, 97.5 - (IMG_BELL.h - IMG_BELL.centerFromBottom), IMG_BELL.w, IMG_BELL.h);
+                  } else if (dt === 'rattle') {
+                      ctx.drawImage(img, x, 97.5 - IMG_RATTLE.centerFromTop, IMG_RATTLE.w, IMG_RATTLE.h);
+                  } else if (dt === 'hugeO' || dt === 'hugeX') {
+                      ctx.drawImage(img, x, 97.5 - IMG_HUGE / 2, IMG_HUGE, IMG_HUGE);
+                  } else if (dt === 'sweetPotato') {
+                      ctx.drawImage(img, x, 97.5 - IMG_SWEET_POTATO_H / 2, size, IMG_SWEET_POTATO_H);
+                  } else {
+                      ctx.drawImage(img, x, 97.5 - size / 2, size, size);
+                  }
               }
               if (el.highlight) {
                 ctx.shadowColor = 'transparent';
