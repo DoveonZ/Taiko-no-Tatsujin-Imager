@@ -1162,6 +1162,12 @@
         IMG_SWEET_POTATO_H = 170,
         IMG_BELL = { w: 150, h: 175, centerFromBottom: 75 },
         IMG_RATTLE = { w: 160, h: 235, centerFromTop: 80 },
+        IMG_NINJA_O = { w: 158, h: 151 },
+        IMG_NINJA_X = { w: 112, h: 112 },
+        IMG_NINJA_BIG_O = { w: 201, h: 219 },
+        IMG_NINJA_BIG_X = { w: 188, h: 189 },
+        IMG_NINJA_BALLOON = { w: 191, h: 160 },
+        IMG_NINJA_DRUMROLL = { w: 213, h: 160 },
         IMG_HUGE = 305;
       const DEFAULT_GAP = 90,
         FIXED_HEIGHT = 195,
@@ -1183,7 +1189,7 @@
       let rowMergeCache = new Map();
       let imgOSmall, imgXSmall, imgOBig, imgXBig,
         imgC1, imgC2, imgC3,
-        imgL1, imgL1Big, imgL2, imgL2Big, imgL3, imgL3Big, imgA, imgT1, imgT2, imgT3, imgCC, imgP, imgBomb, imgOX, imgS, imgU;
+        imgL1, imgL1Big, imgL2, imgL2Big, imgL3, imgL3Big, imgA, imgT1, imgT2, imgT3, imgCC, imgP, imgBomb, imgOX, imgS, imgNinjaO, imgNinjaX, imgNinjaBigO, imgNinjaBigX, imgNinjaBalloon, imgNinjaDrumroll;
       const loaded = {};
       const styleImages = {
         0: {},
@@ -1299,7 +1305,14 @@
         imgCC = s.cc;
         imgOX = s.ox;
         imgS = s.s;
-        imgU = s.u;
+        imgS = s.s;
+        imgR = s.r;
+        imgNinjaO = s.y;
+        imgNinjaX = s.u;
+        imgNinjaBigO = s.yy;
+        imgNinjaBigX = s.uu;
+        imgNinjaBalloon = s.i;
+        imgNinjaDrumroll = s.ii;
         smallifyImgBig.src = s.oo.src;
         smallifyImgSmall.src = s.o.src;
       }
@@ -1342,7 +1355,7 @@
       }
 
       function preloadAllImages() {
-        const types = ['o', 'x', 'oo', 'xx', 'c1', 'c2', 'c3', 'cc', 'l1', 'll1', 'l2', 'll2', 'l3', 'll3', 'p', 'bomb', 'ox', 'a', 't1', 't2', 't3', 's', 'u'];
+        const types = ['o', 'x', 'oo', 'xx', 'c1', 'c2', 'c3', 'cc', 'l1', 'll1', 'l2', 'll2', 'l3', 'll3', 'bomb', 'ox', 'a', 't1', 't2', 't3', 'p', 's', 'r', 'y', 'u', 'yy', 'uu', 'i', 'ii'];
         [0, 1, 2].forEach(style => {
           const prefix = `img/Notes/${style}/`;
           types.forEach(type => {
@@ -1355,12 +1368,20 @@
               checkAllLoaded();
             };
             img.onerror = () => {
-              loaded[key] = false;
+              if (style !== 0 && styleImages[0][type]) {
+                // 回退到样式0
+                styleImages[style][type] = styleImages[0][type];
+                loaded[key] = true;
+              } else {
+                loaded[key] = false;
+              }
               checkAllLoaded();
             };
             img.src = prefix + type + '.png';
           });
         });
+
+        // 小节线图片加载逻辑保持不变
         loaded['bar'] = false;
         barImage.onload = () => {
           loaded['bar'] = true;
@@ -1406,7 +1427,18 @@
           .replace(/＜/g, '<')
           .replace(/＞/g, '>')
           .replace(/〈/g, '<')
-          .replace(/〉/g, '>');
+          .replace(/〉/g, '>')// 特殊音符大小写宽容
+          .replace(/A/g, 'a')
+          .replace(/S/g, 's')
+          .replace(/H/g, 'h')
+          .replace(/R/g, 'r')
+          .replace(/T/g, 't')
+          .replace(/B/g, 'b')
+          .replace(/P/g, 'p')
+          .replace(/E/g, 'e')
+          .replace(/M/g, 'm')
+          .replace(/G/g, 'g')
+          .replace(/q/g, 'Q');
       }
 
       function getGapFactor(a, b) {
@@ -1417,6 +1449,19 @@
         for (let i = 1; i < a.length; i++)
           if (typeof a[i] === 'object' && a[i].id != null && set.has(a[i].id)) r *= a[i].value;
         return r;
+      }
+
+      function expandRepeat(s) {
+        let result = s;
+        let changed = true;
+        while (changed) {
+          changed = false;
+          result = result.replace(/<([^<>]*)>(\d+)/g, (match, content, count) => {
+            changed = true;
+            return content.repeat(parseInt(count, 10));
+          });
+        }
+        return result;
       }
 
       function getSpecialBgColor(styleCode) {
@@ -1431,7 +1476,7 @@
       }
       
       function parseGlobal(input) {
-        const norm = normalize(input);
+        const norm = expandRepeat(normalize(input));
         const rows = [];
         let cur = [];
         const typeStack = [],
@@ -1543,8 +1588,15 @@
             pendBar = true;
             continue;
           }
-          if ('oxOXcC -+=lLpbQatsu'.includes(ch) || ch === ' ') {
+          if ('oxOXcC -+=lLbQatpsuryYUiI'.includes(ch) || ch === ' ') {
             let elType;
+            // 遇到非空格、非长条身体、非长条头/尾的普通音符时，关闭未闭合的滑块头
+            if (ch !== ' ' && !'-=+'.includes(ch) && ch !== 'l' && ch !== 'L' && ch !== 't') {
+              while (sliderStack.length) {
+                const top = sliderStack.pop();
+                top.el.hasTail = false;
+              }
+            }
             if (ch === ' ') elType = 'space';
             else if (ch === '-') elType = 'sliderBody';
             else if (ch === '=') elType = 'bigSliderBody';
@@ -1556,7 +1608,13 @@
             else if (ch === 't') elType = 'timer';
             else if (ch === 'C') elType = 'colorballoon';
             else if (ch === 's') elType = 'bell';
-            else if (ch === 'u') elType = 'rattle';
+            else if (ch === 'r') elType = 'rattle';
+            else if (ch === 'y') elType = 'ninjaO';
+            else if (ch === 'u') elType = 'ninjaX';
+            else if (ch === 'Y') elType = 'ninjaBigO';
+            else if (ch === 'U') elType = 'ninjaBigX';
+            else if (ch === 'i') elType = 'ninjaBalloon';
+            else if (ch === 'I') elType = 'ninjaDrumroll';
             else elType = ch;
 
             const el = {
@@ -1741,6 +1799,19 @@
             const left = pos + IMG_SMALL / 2 - IMG_RATTLE.w / 2;
             return { left, right: left + IMG_RATTLE.w };
         }
+        if (el.type === 'ninjaO' || el.type === 'ninjaX' ||
+            el.type === 'ninjaBigO' || el.type === 'ninjaBigX' ||
+            el.type === 'ninjaBalloon' || el.type === 'ninjaDrumroll') {
+            let w = 0;
+            if (el.type === 'ninjaO') w = IMG_NINJA_O.w;
+            if (el.type === 'ninjaX') w = IMG_NINJA_X.w;
+            if (el.type === 'ninjaBigO') w = IMG_NINJA_BIG_O.w;
+            if (el.type === 'ninjaBigX') w = IMG_NINJA_BIG_X.w;
+            if (el.type === 'ninjaBalloon') w = IMG_NINJA_BALLOON.w;
+            if (el.type === 'ninjaDrumroll') w = IMG_NINJA_DRUMROLL.w;
+            const left = pos + IMG_SMALL / 2 - w / 2;
+            return { left, right: left + w };
+        }
         if (el.type === 'hugeO' || el.type === 'hugeX') {
             const left = pos - (IMG_HUGE - IMG_SMALL) / 2;
             return { left, right: left + IMG_HUGE };
@@ -1753,8 +1824,7 @@
             return { left: pos + ox, right: pos + ox + IMG_BOMB };
         }
         if (el.type === 'sweetPotato') {
-            // 中心在 pos + 80，左边缘 = pos + 80 - 288/2 = pos - 64
-            return { left: pos - 64, right: pos - 64 + IMG_SWEET_POTATO_W };
+            return { left: pos - 29, right: pos - 29 + IMG_SWEET_POTATO_W };
         }
         if (el.type === 'oxnote') {
             const ox = -(IMG_BIG - IMG_SMALL) / 2;
@@ -1794,7 +1864,12 @@
 
       function getElementCenter(el, pos) {
         if (el.type === 'bell') return pos;      // 中心水平位置仍是 pos
-        if (el.type === 'rattle') return pos;
+        if (el.type === 'rattle') return pos + IMG_SMALL / 2;
+        if (el.type === 'ninjaO' || el.type === 'ninjaX' ||
+            el.type === 'ninjaBigO' || el.type === 'ninjaBigX' ||
+            el.type === 'ninjaBalloon' || el.type === 'ninjaDrumroll') {
+            return pos + IMG_SMALL / 2;
+        }
         if (el.type === 'hugeO' || el.type === 'hugeX') return pos + IMG_SMALL / 2;
         if (!el) return pos + IMG_SMALL / 2;
         if (el.type === 'bomb' || el.type === 'oxnote') return pos + IMG_SMALL / 2;
@@ -2021,6 +2096,25 @@
               ctx.fillText(el.annotation, cx, annotateY);
             }
           }
+          // 绘制大小标注（气球、彩球、计时弹）
+          const sizeFont = 'bold 30px "FZYuan", sans-serif';
+          ctx.save();
+          ctx.font = sizeFont;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          for (let i = 0; i < layout.elements.length; i++) {
+            const el = layout.elements[i];
+            if (el.balloonSize !== undefined) {
+              const cx = getElementCenter(el, layout.positions[i]) - layout.minX;
+              const cy = 97.5 - 70;   // 音符中心偏上70像素
+              // 黑色描边提高可读性
+              ctx.strokeStyle = '#000000';
+              ctx.lineWidth = 3;
+              ctx.strokeText(String(el.balloonSize), cx, cy);
+              ctx.fillStyle = '#ffffff';
+              ctx.fillText(String(el.balloonSize), cx, cy);
+            }
+          }
           ctx.restore();
         }
         if (!hideBars) {
@@ -2035,6 +2129,7 @@
             }
           }
         }
+        let isTransparent = false;
         const { sliders = [], balloons = [] } = layout.sliderData || buildRowSliders(layout.elements);
         const ignoredIndices = new Set();
         for (const pair of [...sliders, ...balloons]) {
@@ -2048,7 +2143,7 @@
           if (ignoredIndices.has(i)) continue;
           if (el.type === 'sliderBody' || el.type === 'bigSliderBody' || el.type === 'balloonBody') continue;
           let dt = el.type;
-          if (dt !== 'bomb' && dt !== 'oxnote' && dt !== 'invisible' && dt !== 'timer' && dt !== 'colorballoon' && dt !== 'sweetPotato' && dt !== 'bell' && dt !== 'rattle') {
+          if (dt !== 'bomb' && dt !== 'oxnote' && dt !== 'invisible' && dt !== 'timer' && dt !== 'colorballoon' && dt !== 'sweetPotato' && dt !== 'bell' && dt !== 'rattle' && dt !== 'hugeO' && dt !== 'hugeX' && dt !== 'ninjaO' && dt !== 'ninjaX' && dt !== 'ninjaBigO' && dt !== 'ninjaBigX' && dt !== 'ninjaBalloon' && dt !== 'ninjaDrumroll') {
               if (randomRow && randomRow[i]) dt = invertType(dt, true);
               dt = invertType(dt, doInvert);
               if (doSmallify && dt !== 'c') dt = smallifyType(dt);
@@ -2063,7 +2158,7 @@
               img = S.bomb;
           } else if (dt === 'sweetPotato') {
               size = IMG_SWEET_POTATO_W;
-              ox = -64;   // 使中心位于 pos + 80
+              ox = -29;
               img = S.p;
           } else if (dt === 'oxnote') {
               size = IMG_BIG;
@@ -2086,8 +2181,33 @@
               img = S.s;
               // 需要特殊处理绘制时的宽高与 y 偏移
           } else if (dt === 'rattle') {
-              ox = -IMG_RATTLE.w / 2 + IMG_SMALL / 2;
+              size = IMG_RATTLE.w;      // 尺寸会单独设置宽高，此处占位
+              ox = IMG_SMALL / 2 - IMG_RATTLE.w / 2;
+              img = S.r;
+          } else if (dt === 'ninjaO') {
+              size = IMG_NINJA_O.w;
+              ox = IMG_SMALL / 2 - IMG_NINJA_O.w / 2;
+              img = S.y;
+          } else if (dt === 'ninjaX') {
+              size = IMG_NINJA_X.w;
+              ox = IMG_SMALL / 2 - IMG_NINJA_X.w / 2;
               img = S.u;
+          } else if (dt === 'ninjaBigO') {
+              size = IMG_NINJA_BIG_O.w;
+              ox = IMG_SMALL / 2 - IMG_NINJA_BIG_O.w / 2;
+              img = S.yy;
+          } else if (dt === 'ninjaBigX') {
+              size = IMG_NINJA_BIG_X.w;
+              ox = IMG_SMALL / 2 - IMG_NINJA_BIG_X.w / 2;
+              img = S.uu;
+          } else if (dt === 'ninjaBalloon') {
+              size = IMG_NINJA_BALLOON.w;
+              ox = IMG_SMALL / 2 - IMG_NINJA_BALLOON.w / 2;
+              img = S.i;
+          } else if (dt === 'ninjaDrumroll') {
+              size = IMG_NINJA_DRUMROLL.w;
+              ox = IMG_SMALL / 2 - IMG_NINJA_DRUMROLL.w / 2;
+              img = S.ii;
           } else if (dt === 'hugeO') {
               ox = -(IMG_HUGE - IMG_SMALL) / 2;
               img = S.oo;
@@ -2124,9 +2244,29 @@
                       ctx.drawImage(img, x, 97.5 - IMG_HUGE / 2, IMG_HUGE, IMG_HUGE);
                   } else if (dt === 'sweetPotato') {
                       ctx.drawImage(img, x, 97.5 - IMG_SWEET_POTATO_H / 2, size, IMG_SWEET_POTATO_H);
-                  } else {
-                      ctx.drawImage(img, x, 97.5 - size / 2, size, size);
+                  } else if (dt === 'rattle') {
+                      ctx.drawImage(img, x, 97.5 - IMG_RATTLE.centerFromTop, IMG_RATTLE.w, IMG_RATTLE.h);
                   }
+                  else if (dt === 'ninjaO') {
+                      ctx.drawImage(img, x, 97.5 - IMG_NINJA_O.h / 2, IMG_NINJA_O.w, IMG_NINJA_O.h);
+                  }
+                  else if (dt === 'ninjaX') {
+                      ctx.drawImage(img, x, 97.5 - IMG_NINJA_X.h / 2, IMG_NINJA_X.w, IMG_NINJA_X.h);
+                  }
+                  else if (dt === 'ninjaBigO') {
+                      ctx.drawImage(img, x, 97.5 - IMG_NINJA_BIG_O.h / 2, IMG_NINJA_BIG_O.w, IMG_NINJA_BIG_O.h);
+                  }
+                  else if (dt === 'ninjaBigX') {
+                      ctx.drawImage(img, x, 97.5 - IMG_NINJA_BIG_X.h / 2, IMG_NINJA_BIG_X.w, IMG_NINJA_BIG_X.h);
+                  }
+                  else if (dt === 'ninjaBalloon') {
+                      ctx.drawImage(img, x, 97.5 - IMG_NINJA_BALLOON.h / 2, IMG_NINJA_BALLOON.w, IMG_NINJA_BALLOON.h);
+                  }
+                  else if (dt === 'ninjaDrumroll') {
+                      ctx.drawImage(img, x, 97.5 - IMG_NINJA_DRUMROLL.h / 2, IMG_NINJA_DRUMROLL.w, IMG_NINJA_DRUMROLL.h);
+                  }else {
+                      ctx.drawImage(img, x, 97.5 - size / 2, size, size);
+                  } 
               }
               if (el.highlight) {
                 ctx.shadowColor = 'transparent';
@@ -2147,7 +2287,7 @@
             tSize = isBig ? IMG_BIG : IMG_SMALL;
           const headEl = (s.headIdx !== -1) ? layout.elements[s.headIdx] : (s.tailIdx !== -1 ? layout.elements[s.tailIdx] : null);
           const tailEl = (s.tailIdx !== -1) ? layout.elements[s.tailIdx] : null;
-          const isTransparent = headEl?.transparent ?? false;
+          isTransparent = headEl?.transparent ?? false;
           const gogoVal = headEl ? headEl.gogo : false;
           const actualStyle = getActualStyle({ gogo: gogoVal }, currentStyle);
           const S = styleImages[actualStyle];
@@ -2173,7 +2313,11 @@
                 if (isTransparent) ctx.globalAlpha = 0.5;
                 ctx.save();
                 ctx.translate(-layout.minX, 0);
-                ctx.drawImage(mImg, headX, 97.5 - midH / 2, bodyWidth, midH);
+                if (tjaModeActive) {
+                  // TJA 模式：跨行长条上半部分，绘制身体
+                  ctx.drawImage(mImg, headX, 97.5 - midH / 2, bodyWidth, midH);
+                }
+                // 绘制头部（两种模式都绘制）
                 ctx.drawImage(hImg, headX - hSize / 2, 97.5 - hSize / 2, hSize, hSize);
                 ctx.restore();
               }
@@ -2274,7 +2418,7 @@
             const tailOnly = b.headIdx === -1 && b.tailIdx !== -1;
             const complete = b.headIdx !== -1 && b.tailIdx !== -1;
             const headEl = (b.headIdx !== -1) ? layout.elements[b.headIdx] : null;
-            const isTransparent = headEl?.transparent;
+            isTransparent = headEl?.transparent;
             const gogoVal = headEl ? headEl.gogo : false;
             const actualStyle = getActualStyle({ gogo: gogoVal }, currentStyle);
             const c2 = styleImages[actualStyle].c2;
@@ -2589,6 +2733,8 @@ function openImagePreview(canvas) {
         let pendingBpm = null;
         let defaultBpm = null;
         let currentBpm = null;
+        let currentBalloonSizes = [];   // 当前 COURSE 的 BALLOON 大小序列
+        let balloonIndex = 0;           // 当前取用索引
         let globalPrevDisplayBpm = null;
         let globalPrevScrollMarker = null;
 
@@ -2597,7 +2743,10 @@ function openImagePreview(canvas) {
           const n = tokens.length;
           const baseGap = DEFAULT_GAP * 16 * a / n;
           const elements = [];
-
+          const getNextBalloonSize = () => {
+            if (balloonIndex >= currentBalloonSizes.length) return 0;
+            return currentBalloonSizes[balloonIndex++];
+          };
           for (let i = 0; i < tokens.length; i++) {
             const token = tokens[i];
             const ch = token.ch;
@@ -2613,6 +2762,7 @@ function openImagePreview(canvas) {
                     scrollFactor, gogo, isSlider: true, isBig, sliderRole: 'head',
                     sliderType: ch === 'D' ? 'timer' : undefined
                 };
+                if (ch === 'D') el.balloonSize = getNextBalloonSize();
                 el.sliderId = sliderIdCounter++;
                 el.hasTail = true;
                 sliderStack.push({ el, isBig, isBalloon: false });
@@ -2632,6 +2782,7 @@ function openImagePreview(canvas) {
                 type: 'c', pathFactors: [1], hasBar: false, curlGapToNext: 1,
                 scrollFactor, gogo, isBalloon: true, sliderRole: 'head'
               };
+              el.balloonSize = getNextBalloonSize();
               el.sliderId = sliderIdCounter++;
               el.hasTail = true;
               sliderStack.push({ el, isBig: false, isBalloon: true });
@@ -2665,6 +2816,7 @@ function openImagePreview(canvas) {
                     type: 'colorballoon', pathFactors: [1], hasBar: false, curlGapToNext: 1,
                     scrollFactor, gogo, isBalloon: true, sliderRole: 'head'
                 };
+                el.balloonSize = getNextBalloonSize();
                 el.sliderId = sliderIdCounter++;
                 el.hasTail = true;
                 sliderStack.push({ el, isBig: false, isBalloon: true });
@@ -2827,6 +2979,12 @@ function openImagePreview(canvas) {
             if (currentBpm === null) currentBpm = defaultBpm;
             continue;
           }
+          if (rawLine.startsWith('BALLOON:') && !inStart) {
+              const val = rawLine.replace('BALLOON:', '').trim();
+              currentBalloonSizes = val.split(',').map(v => parseInt(v.trim(), 10) || 0);
+              balloonIndex = 0;   // ← 重置索引，确保新气球序列从头开始
+              continue;
+          }
           let line = rawLine.trim();
           const ci = line.indexOf('//');
           if (ci !== -1) line = line.substring(0, ci).trim();
@@ -2836,6 +2994,8 @@ function openImagePreview(canvas) {
             continue;
           }
           if (line.startsWith('COURSE:')) {
+            currentBalloonSizes = [];
+            balloonIndex = 0;
             if (buffer.length) processSegment(buffer);
             buffer = [];
             pendingBpm = defaultBpm;
@@ -2885,6 +3045,7 @@ function openImagePreview(canvas) {
             buffer = [];
             pendingBpm = defaultBpm;
             inStart = true;
+            balloonIndex = 0;   // ← 每个 #START 重新开始气球计数
             globalPrevDisplayBpm = null;
             let role = 'Single';
             if (line.includes('P1')) role = 'P1';
@@ -3398,13 +3559,16 @@ function openImagePreview(canvas) {
           const label = branchViewMode === 'M' ? '达人' : branchViewMode === 'E' ? '玄人' : branchViewMode === 'N' ? '普通' : '合并';
           btn.textContent = label;
           btn.onclick = () => {
-            showLoading();
-            if (branchViewMode === 'M') branchViewMode = 'E';
-            else if (branchViewMode === 'E') branchViewMode = 'N';
-            else if (branchViewMode === 'N') branchViewMode = 'ALL';
-            else branchViewMode = 'M';
-            updateCourseButtons();
-            render();
+              showLoading();
+              if (branchViewMode === 'M') branchViewMode = 'E';
+              else if (branchViewMode === 'E') branchViewMode = 'N';
+              else if (branchViewMode === 'N') branchViewMode = 'ALL';
+              else branchViewMode = 'M';
+              // ===== 清除画布缓存与行合并缓存，避免分支间缓存串用 =====
+              canvasCache.clear();
+              rowMergeCache.clear();
+              updateCourseButtons();
+              render();
           };
           courseContainer.appendChild(btn);
         }
@@ -3542,8 +3706,12 @@ function openImagePreview(canvas) {
           if (selectedCourse.viewType === 'double') {
             rowLayouts = buildDoubleLayouts(hsScale);
           } else if (selectedCourse.hasBranch && branchViewMode !== 'ALL') {
-            const sourceRows = selectedCourse.rows.filter(row => row.branch === 'COMMON' || row.branch === branchViewMode);
-            rowLayouts = getMergedRowsCached(sourceRows, hsScale, selectedCourse.name + '_BRANCH_' + branchViewMode).layouts;
+              const sourceRows = selectedCourse.rows.filter(row => row.branch === 'COMMON' || row.branch === branchViewMode);
+              rowLayouts = getMergedRowsCached(sourceRows, hsScale, selectedCourse.name + '_BRANCH_' + branchViewMode).layouts;
+              // ===== 修复：为每个布局设置分支类型，确保缓存键能区分不同分支 =====
+              rowLayouts.forEach(layout => {
+                  layout.branchType = branchViewMode;
+              });
           } else {
             rowLayouts = [];
             const sections = splitBranchSections(selectedCourse.rows);
@@ -4402,17 +4570,9 @@ function openImagePreview(canvas) {
       }
 
       async function loadChineseMap() {
-        try {
-          const r = await fetch('map.txt');
-          if (r.ok) {
-            const t = await r.text();
-            chineseNoteMap = parseChineseMap(t);
-          } else {
-            chineseNoteMap = getFallbackChineseMap();
-          }
-        } catch (e) {
-          chineseNoteMap = getFallbackChineseMap();
-        }
+        // 使用内置映射
+        chineseNoteMap = getFallbackChineseMap();
+        // 载入用户自定义映射
         loadUserMap();
         Object.assign(chineseNoteMap, userChineseMap);
       }
@@ -4434,32 +4594,111 @@ function openImagePreview(canvas) {
 
       function getFallbackChineseMap() {
         return {
-  // 长度为 4 的 o/x 串（母串最先出现）
-  '田': 'oooo',
-  '卓': 'xoox',
-  '井': 'xxxx',
+          // ===== 六十四卦全称（长度6的 o/x 串） =====
+          '重乾': 'oooooo',
+          '重坤': 'xxxxxx',
+          '屯': 'oxxxox',
+          '蒙': 'xoxxxo',
+          '需': 'oooxox',
+          '讼': 'xoxooo',
+          '师': 'xoxxxx',
+          '比': 'xxxxox',
+          '小畜': 'oooxoo',
+          '履': 'ooxooo',
+          '泰': 'oooxxx',
+          '否': 'xxxooo',
+          '同人': 'oxoooo',
+          '大有': 'ooooxo',
+          '谦': 'xxoxxx',
+          '豫': 'xxxoxx',
+          '随': 'oxxoox',
+          '蛊': 'xooxxo',
+          '临': 'ooxxxx',
+          '观': 'xxxxoo',
+          '噬嗑': 'oxxoxo',
+          '贲': 'oxoxxo',
+          '剥': 'xxxxxo',
+          '复': 'oxxxxx',
+          '无妄': 'oxxooo',
+          '大畜': 'oooxxo',
+          '颐': 'oxxxxo',
+          '大过': 'xoooox',
+          '重坎': 'xoxxox',
+          '重离': 'oxooxo',
+          '咸': 'xxooox',
+          '恒': 'xoooxx',
+          '遁': 'xxoooo',
+          '大壮': 'ooooxx',
+          '晋': 'xxxoxo',
+          '明夷': 'oxoxxx',
+          '家人': 'oxoxoo',
+          '睽': 'ooxoxo',
+          '蹇': 'xxoxox',
+          '解': 'xoxoxx',
+          '损': 'ooxxxo',
+          '益': 'oxxxoo',
+          '夬': 'ooooox',
+          '姤': 'xooooo',
+          '萃': 'xxxoox',
+          '升': 'xooxxx',
+          '困': 'xoxoox',
+          '井': 'xooxox',
+          '革': 'oxooox',
+          '鼎': 'xoooxo',
+          '重震': 'oxxoxx',
+          '重艮': 'xxoxxo',
+          '渐': 'xxoxoo',
+          '归妹': 'ooxoxx',
+          '丰': 'oxooxx',
+          '旅': 'xxooxo',
+          '重巽': 'xooxoo',
+          '重兑': 'ooxoox',
+          '涣': 'xoxxoo',
+          '节': 'ooxxox',
+          '中孚': 'ooxxoo',
+          '小过': 'xxooxx',
+          '既济': 'oxoxox',
+          '未济': 'xoxoxo',
+          // 长度为 10 的 o/x 串
+          '董': 'xxxxooooxx', 
+          // 长度为 8 的 o/x 串
+          '描': 'xxxxoooo', '猫': 'xxxxoooo', 
+          // 长度为 7 的 o/x 串
+          '喵': 'oxxoooo',
+          // 长度为 6 的 o/x 串
+          '俉': 'xooooo',
+          // 长度为 5 的 o/x 串
+          '昊': 'ooooo',
+          '倡': 'xoooo',
+          // 长度为 4 的 o/x 串
+          '田': 'oooo',
+          '偘': 'xooo',
+          '卓': 'xoox',
+          '若': 'xxxo',
+          '并': 'xxox',
 
-  // 长度为 3 的 o/x 串
-  '乾': 'ooo', '天': 'ooo', '品': 'ooo', '目': 'ooo',
-  '坤': 'xxx', '地': 'xxx', '丰': 'xxx', '卉': 'xxx',
-  '巽': 'xoo', '风': 'xoo', '有': 'xoo',
-  '坎': 'xox', '水': 'xox', '卤': 'xox',
-  '艮': 'xxo', '山': 'xxo', '佑': 'xxo',
-  '兑': 'oox', '泽': 'oox',
-  '离': 'oxo', '火': 'oxo', '咕': 'oxo',
-  '震': 'oxx', '雷': 'oxx',
+          // 长度为 3 的 o/x 串
+          '乾': 'ooo', '天': 'ooo', '品': 'ooo', '目': 'ooo',
+          '坤': 'xxx', '地': 'xxx', '卉': 'xxx',
+          '巽': 'xoo', '风': 'xoo', '有': 'xoo', '侣': 'xoo',
+          '坎': 'xox', '水': 'xox', '卤': 'xox',
+          '艮': 'xxo', '山': 'xxo', '佑': 'xxo',
+          '兑': 'oox', '泽': 'oox', '早': 'oox',
+          '离': 'oxo', '火': 'oxo', '咕': 'oxo',
+          '震': 'oxx', '雷': 'oxx', '吽': 'oxx',
 
-  // 长度为 2 的 o/x 串
-  '外': 'ox', '叶': 'ox', '少阴': 'ox', '↖': 'ox', '↗': 'ox',
-  '内': 'xo', '右': 'xo', '少阳': 'xo', '↘': 'xo', '↙': 'xo',
-  '吕': 'oo', '太阳': 'oo', '滚红': 'oo',
-  '爻': 'xx', '太阴': 'xx', '滚蓝': 'xx',
+          // 长度为 2 的 o/x 串
+          '外': 'ox', '叶': 'ox', '少阴': 'ox', '↖': 'ox', '↗': 'ox',
+          '内': 'xo', '右': 'xo', '少阳': 'xo', '↘': 'xo', '↙': 'xo',
+          '太阳': 'oo', '滚红': 'oo', '吕': 'oo', '日': 'oo', '回': 'oo',
+          '太阴': 'xx', '滚蓝': 'xx', '爻': 'xx', '艹': 'xx',
 
-  // 长度为 1 的 o/x 串
-  '咚': 'o', 'd': 'o', '口': 'o', '阳': 'o', '红': 'o', '面': 'o', '🥵': 'o', 'ど': 'o', 'ド': 'o', 'コ': 'o', '🔴': 'o', '愤怒': 'o',
-  '咔': 'x', 'k': 'x', '乂': 'x', '阴': 'x', '蓝': 'x', '边': 'x', '🥶': 'x', 'か': 'x', 'カ': 'x', '🔵': 'x', '平静': 'x'
-};
-}
+          // 长度为 1 的 o/x 串
+          '咚': 'o', 'd': 'o', 'D' : 'O', '口': 'o', '阳': 'o', '红': 'o', '面': 'o', '🥵': 'o', 'ど': 'o', 'ド': 'o', 'コ': 'o', '🔴': 'o', '愤怒': 'o', '偶': 'o',
+          '咔': 'x', 'k': 'x', 'K' : 'X', '乂': 'x', '阴': 'x', '蓝': 'x', '边': 'x', '🥶': 'x', 'か': 'x', 'カ': 'x', '🔵': 'x', '平静': 'x', '像': 'x',
+          '普': 'n', '玄': 'e', '进': 'e', '达': 'm', '紫': 'Q'
+        };
+      }
 
       function openMapEditor() {
         mapTableBody.innerHTML = '';
