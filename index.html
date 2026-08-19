@@ -881,6 +881,7 @@
         <button class="btn" id="btnHighlightSelection">高亮选中部分</button>
         <button class="btn tja-only" id="btnIgnoreScroll">注重目视</button>
         <button class="btn" id="btnResetView">显示原谱</button>
+        <button class="btn tja-only" id="btnRemoveOtherCourses">去除其他难度</button>
         <button class="btn tja-only" id="btnOptions">其他选项</button>
         <button class="btn" id="btnTJAtoText" style="display:none;">TJA转ox</button>
         <div style="position:relative; display:inline-block;">
@@ -892,6 +893,7 @@
           <input type="number" id="rowSpacingInput" value="0.73" step="0.01" min="0.1" />
         </div>
         <button class="btn btn-primary" id="btnDownloadImage">下载图片</button>
+        <button class="btn btn-primary tja-only" id="btnSaveTja">保存tja</button>
       </div>
       <div id="courseContainer" style="display:none;" class="course-row"></div>
     </div>
@@ -1053,6 +1055,7 @@
       <div style="display:flex; justify-content:flex-end; gap:8px;">
         <button class="btn" id="btnFixedBpmCancel">取消</button>
         <button class="btn btn-primary" id="btnFixedBpmOk">确定</button>
+        <button class="btn btn-primary" id="btnFixedBpmApplyTja">应用到tja</button>
       </div>
     </div>
   </div>
@@ -1109,6 +1112,7 @@
       const tutorialBox = document.getElementById('tutorialBox');
       const divergenceWarning = document.getElementById('divergenceWarning');
       const btnDownloadImage = document.getElementById('btnDownloadImage');
+      const btnSaveTja = document.getElementById('btnSaveTja');
       const btnClearBars = document.getElementById('btnClearBars');
       const controlsRow = document.getElementById('controlsRow');
       const legendBox = document.getElementById('legendBox');
@@ -1151,6 +1155,8 @@
       const nameplatePage = document.getElementById('nameplateContainer'); // 名牌页面
       const rowSpacingInput = document.getElementById('rowSpacingInput');
       const rowSpacingItem = document.getElementById('rowSpacingItem');
+      const btnRemoveOtherCourses = document.getElementById('btnRemoveOtherCourses');
+      const btnFixedBpmApplyTja = document.getElementById('btnFixedBpmApplyTja');
 
       // ==================== 常量与全局变量 ====================
       const IMG_SMALL = 106,
@@ -1252,7 +1258,7 @@
           visible: true
         }
       ];
-
+      let tjaGlobalHeaderLines = [];   // 存储最近一次解析的 TJA 文件头部
       let loadingToken = 0;
       let loadingHideTimeout = null;
       let pendingRender = false;
@@ -2506,6 +2512,7 @@
             }
             ctx.save();
             ctx.font = 'bold 36px "FZYuan", sans-serif';
+            ctx.textAlign = 'left';
             ctx.strokeStyle = '#000000';
             ctx.lineWidth = 3;
             ctx.textBaseline = 'top';
@@ -2737,6 +2744,8 @@ function openImagePreview(canvas) {
         let balloonIndex = 0;           // 当前取用索引
         let globalPrevDisplayBpm = null;
         let globalPrevScrollMarker = null;
+        let globalHeaderLines = [];   // 存储第一个 COURSE 之前的所有行（文件头部）
+        let firstCourseSeen = false;  // 标记是否已遇到 COURSE
 
         const processSegment = (tokens) => {
           if (!tokens.length || !curCourse) return;
@@ -2969,6 +2978,12 @@ function openImagePreview(canvas) {
           }
         };
         for (let rawLine of lines) {
+          const isCourseLine = rawLine.trim().startsWith('COURSE:');
+          if (!firstCourseSeen && !isCourseLine) {
+              globalHeaderLines.push(rawLine);
+          } else if (firstCourseSeen && !isCourseLine && curCourse) {
+              curCourse.rawLines.push(rawLine);
+          }
           if (rawLine.startsWith('TITLE:')) {
             globalTitle = rawLine.replace('TITLE:', '').trim();
             continue;
@@ -2994,65 +3009,94 @@ function openImagePreview(canvas) {
             continue;
           }
           if (line.startsWith('COURSE:')) {
-            currentBalloonSizes = [];
-            balloonIndex = 0;
-            if (buffer.length) processSegment(buffer);
-            buffer = [];
-            pendingBpm = defaultBpm;
-            clearUnclosedSliders();
-            if (curCourse && curCourse.rows.length) courses.push(curCourse);
-            const name = line.replace('COURSE:', '').trim();
-            curCourse = {
-              name,
-              rows: [],
-              title: globalTitle,
-              level: curLevel,
-              hasBranch: false,
-              style: 'Single',
-              chartRole: 'Single',
-              viewType: 'normal'
-            };
-            curLevel = '';
-            inStart = false;
-            globalPrevDisplayBpm = null;
-            currentScroll = 1;
-            currentScrollMarker = 1;
-            a = 1;
-            buffer = [];
-          } else if (line.startsWith('#START')) {
-            if (curCourse && curCourse.rows.length) {
-              courses.push(curCourse);
+              currentBalloonSizes = [];
+              balloonIndex = 0;
+              if (buffer.length) processSegment(buffer);
+              buffer = [];
+              pendingBpm = defaultBpm;
+              clearUnclosedSliders();
+              if (curCourse && curCourse.rows.length) courses.push(curCourse);
+              const name = line.replace('COURSE:', '').trim();
               curCourse = {
-                name: curCourse.name,
-                rows: [],
-                title: curCourse.title,
-                level: curCourse.level,
-                hasBranch: false,
-                style: 'Single',
-                chartRole: 'Single',
-                viewType: 'normal'
+                  name,
+                  rows: [],
+                  title: globalTitle,
+                  level: curLevel,
+                  hasBranch: false,
+                  style: 'Single',
+                  chartRole: 'Single',
+                  viewType: 'normal',
+                  rawLines: []   // ← 新增属性
               };
+              curCourse.rawLines.push(rawLine);  // 记录 COURSE 行本身
+              firstCourseSeen = true;            // 标记已进入课程区域
+              curLevel = '';
+              inStart = false;
+              globalPrevDisplayBpm = null;
               currentScroll = 1;
               currentScrollMarker = 1;
               a = 1;
-              gogoActive = false;
-              currentBranch = 'COMMON';
-              branchSavedA = 1;
-              branchSavedScroll = 1;
-              branchSavedGogo = false;
+              buffer = [];
+          } else if (line.startsWith('#START')) {
+            // 如果当前课程已有行，则结束旧课程，创建新课程对象
+            if (curCourse && curCourse.rows.length) {
+                courses.push(curCourse);
+                curCourse = {
+                    name: curCourse.name,
+                    rows: [],
+                    title: curCourse.title,
+                    level: curCourse.level,
+                    hasBranch: false,
+                    style: 'Single',
+                    chartRole: 'Single',
+                    viewType: 'normal'
+                };
             }
+
+            // ---- 每个 #START 开始时统一重置状态 ----
             if (buffer.length) processSegment(buffer);
             buffer = [];
+
+            // 清空未闭合的长条
+            clearUnclosedSliders();
+
+            // 重置 BPM 相关
             pendingBpm = defaultBpm;
-            inStart = true;
-            balloonIndex = 0;   // ← 每个 #START 重新开始气球计数
+            currentBpm = defaultBpm;          // 当前 BPM 恢复为 COURSE 开头定义的 BPM
+
+            // 重置 GOGO 状态
+            gogoActive = false;
+
+            // 重置拍号 (MEASURE)
+            a = 1;
+
+            // 重置 SCROLL
+            currentScroll = 1;
+            currentScrollMarker = 1;
+
+            // 重置分歧分支状态
+            currentBranch = 'COMMON';
+            branchSavedA = 1;
+            branchSavedScroll = 1;
+            branchSavedGogo = false;
+
+            // 重置标注变化点
             globalPrevDisplayBpm = null;
+            globalPrevScrollMarker = null;
+
+            // 重置气球索引（即使谱面没有 BALLOON 也不会出错）
+            balloonIndex = 0;
+
+            // 标记已进入 #START 内部
+            inStart = true;
+
+            // 确定角色（P1、P2 或 Single）
             let role = 'Single';
             if (line.includes('P1')) role = 'P1';
             else if (line.includes('P2')) role = 'P2';
             curCourse.style = currentStyle;
             curCourse.chartRole = role;
-          } else if (line === '#END') {
+        } else if (line === '#END') {
             if (buffer.length) processSegment(buffer);
             buffer = [];
             clearUnclosedSliders();
@@ -3110,6 +3154,8 @@ function openImagePreview(canvas) {
             course.layoutCache = { p1: new Map(), p2: new Map(), single: new Map() };
           }
         });
+        // 保存头部行供外部使用
+        tjaGlobalHeaderLines = globalHeaderLines;
         return parsed;
       }
 
@@ -3610,6 +3656,10 @@ function openImagePreview(canvas) {
         btnClearBars.style.display = tjaModeActive ? 'none' : 'inline-flex';
         btnIgnoreScroll.classList.toggle('active', visualFocusActive);
         legendBox.style.display = tjaModeActive ? 'none' : ''; 
+        const mergeLabel = mergeViewCheckbox.closest('label');
+        if (mergeLabel) {
+            mergeLabel.style.display = tjaModeActive ? 'none' : '';
+        }
         btnTJAtoText.style.display = 'none';
         hsControlItem.style.display = tjaModeActive ? 'none' : 'inline-flex';
         btnHighlightSelection.style.display = tjaModeActive ? 'none' : 'inline-flex';
@@ -4009,7 +4059,86 @@ function openImagePreview(canvas) {
         showLoading();
         render();
       }
-
+      function applyFixedBpmToTja() {
+          // 1. 获取输入的固定BPM值
+          const a = parseFloat(fixedBpmInputModal.value);
+          if (isNaN(a) || a <= 0) {
+              alert('请输入有效的固定BPM值');
+              return;
+          }
+          // 2. 确保在TJA模式且输入框有内容
+          if (!tjaModeActive) {
+              alert('请在TJA模式下使用此功能');
+              return;
+          }
+          const text = textarea.value;
+          if (!text.trim()) {
+              alert('输入框为空');
+              return;
+          }
+          // 3. 提取谱面预设BPM（文件头部的BPM:值）
+          const bpmMatch = text.match(/^\s*BPM\s*:\s*([\d.]+)/m);
+          if (!bpmMatch) {
+              alert('未找到BPM定义');
+              return;
+          }
+          const baseBpm = parseFloat(bpmMatch[1]);
+          if (isNaN(baseBpm) || baseBpm <= 0) {
+              alert('预设BPM值无效');
+              return;
+          }
+          // 4. 按行处理文本
+          const lines = text.split(/\r?\n/);
+          const newLines = [];
+          for (let line of lines) {
+              const trimmed = line.trim();
+              // 删除所有原有的 #SCROLL 行
+              if (trimmed.startsWith('#SCROLL')) {
+                  continue;
+              }
+              // 在每个 #START 行后插入 #SCROLL a/baseBpm
+              if (trimmed.startsWith('#START')) {
+                  newLines.push(line);
+                  newLines.push(`#SCROLL ${(a / baseBpm).toFixed(4)}`);
+                  continue;
+              }
+              // 在每个 #BPMCHANGE x 行后插入 #SCROLL a/x
+              if (trimmed.startsWith('#BPMCHANGE')) {
+                  const m = trimmed.match(/^#BPMCHANGE\s+([\d.]+)/);
+                  newLines.push(line);
+                  if (m) {
+                      const bpmVal = parseFloat(m[1]);
+                      if (!isNaN(bpmVal) && bpmVal > 0) {
+                          newLines.push(`#SCROLL ${(a / bpmVal).toFixed(4)}`);
+                      }
+                  }
+                  continue;
+              }
+              newLines.push(line);
+          }
+          // 5. 更新textarea
+          const newText = newLines.join('\n');
+          textarea.value = newText;
+          // 6. 退出弹窗
+          closeFixedBpmModal();
+          // 7. 打开“注重目视”选项
+          visualFocusActive = true;
+          btnIgnoreScroll.classList.add('active');
+          // 8. 关闭运行时固定流速（因为已经直接修改了谱面）
+          fixedBpmActive = false;
+          btnFixedBpm.classList.remove('active');
+          // 9. 重新解析谱面并渲染
+          const prevCourseName = selectedCourse ? selectedCourse.name : null;
+          tjaCourses = parseTJA(textarea.value);
+          selectedCourse = prevCourseName ? tjaCourses.find(c => c.name === prevCourseName) : null;
+          if (!selectedCourse && tjaCourses.length) selectedCourse = tjaCourses[0];
+          updateCourseButtons();
+          canvasCache.clear();
+          rowMergeCache.clear();
+          showLoading();
+          render();
+      }
+      
       function toggleFixedBpm() {
         if (fixedBpmActive) {
           // 关闭固定流速
@@ -4159,6 +4288,33 @@ function openImagePreview(canvas) {
         if (e.target === optionsModal) optionsModal.style.display = 'none';
       });
 
+      btnRemoveOtherCourses.addEventListener('click', () => {
+          if (!tjaModeActive || !selectedCourse) {
+              alert('请先在 TJA 模式下选择难度');
+              return;
+          }
+          if (selectedCourse.viewType === 'double') {
+              alert('暂不支持双打谱面的难度去除');
+              return;
+          }
+          if (!selectedCourse.rawLines || selectedCourse.rawLines.length === 0) {
+              alert('无法获取当前难度原始文本');
+              return;
+          }
+          // 构建新文本：头部（全局信息）+ 当前课程块
+          const newText = tjaGlobalHeaderLines.join('\n') + '\n' + selectedCourse.rawLines.join('\n');
+          textarea.value = newText;
+          // 清除缓存并重新解析
+          rowMergeCache.clear();
+          canvasCache.clear();
+          tjaCourses = parseTJA(textarea.value);
+          // 尝试恢复选中同名难度
+          const prevName = selectedCourse.name;
+          selectedCourse = tjaCourses.find(c => c.name === prevName) || (tjaCourses.length ? tjaCourses[0] : null);
+          updateCourseButtons();
+          showLoading();
+          render();
+      });
       btnIgnoreScroll.addEventListener('click', () => {
         showLoading();
         if (!visualFocusActive && fixedBpmActive) {
@@ -4225,8 +4381,9 @@ function openImagePreview(canvas) {
         }
       });
 
-       btnFixedBpm.addEventListener('click', toggleFixedBpm);
+      btnFixedBpm.addEventListener('click', toggleFixedBpm);
       btnFixedBpmOk.addEventListener('click', applyFixedBpm);
+      btnFixedBpmApplyTja.addEventListener('click', applyFixedBpmToTja);
       btnFixedBpmCancel.addEventListener('click', closeFixedBpmModal);
       window.addEventListener('click', (e) => {
         if (e.target === fixedBpmModal) closeFixedBpmModal();
@@ -4525,7 +4682,41 @@ function openImagePreview(canvas) {
           alert('请允许弹出窗口');
         }
       });
+      btnSaveTja.addEventListener('click', () => {
+          // 确保在 TJA 模式下
+          if (!tjaModeActive) return;
 
+          const text = textarea.value;
+          if (!text.trim()) {
+              alert('输入框为空，无法保存');
+              return;
+          }
+
+          // 从 TJA 文本中提取 TITLE
+          let title = '';
+          const titleMatch = text.match(/^\s*TITLE\s*:\s*(.*)$/m);
+          if (titleMatch && titleMatch[1]) {
+              title = titleMatch[1].trim();
+          } else {
+              title = 'untitled';
+          }
+
+          // 替换文件名字符，避免非法字符
+          const safeTitle = title.replace(/[\\/:*?"<>|]/g, '_');
+          const filename = safeTitle + '.tja';
+
+          // 创建 Blob 并触发下载
+          const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+      });
+      
       btnEditMap.addEventListener('click', openMapEditor);
       btnAddMapRow.addEventListener('click', () => addMapRow());
       btnSaveMap.addEventListener('click', () => {
