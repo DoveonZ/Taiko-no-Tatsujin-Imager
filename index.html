@@ -670,7 +670,53 @@
       background: var(--accent);
       color: #fff;
     }
+    /* 映射弹窗 Tabs */
+    .map-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
 
+    .map-tab {
+      padding: 8px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: #f8f5f0;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .map-tab.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .map-pane {
+      display: none;
+    }
+
+    .map-pane.active {
+      display: block;
+    }
+
+    /* 官方分类按钮 */
+    .official-category-btn {
+      padding: 8px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: #f8f5f0;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: background 0.2s;
+    }
+
+    .official-category-btn:hover {
+      background: #e8d5c0;
+    }
     /* 歌曲名牌预览区 */
     .music-nameplate-preview {
       display: flex;
@@ -822,6 +868,7 @@
   <div id="sidebar" class="sidebar">
     <button class="sidebar-menu-btn active" data-page="taiko">谱面生成</button>
     <button class="sidebar-menu-btn" data-page="nameplate">歌曲名牌</button>
+    <button class="sidebar-menu-btn" id="btnNoteSkin">Note皮肤生成</button>
     <a href="https://taiko.donders.work/" target="_blank" rel="noopener noreferrer" class="sidebar-menu-btn" style="text-decoration:none; display:block;">更多工具</a>
   </div>
   <div class="app-container layout-ox" id="appContainer">
@@ -878,6 +925,7 @@
         <button class="btn tja-only" id="btnHsAdjust" title="HS调整">HS调整</button>
         <button class="btn tja-only" id="btnFixedBpm" title="流速固定">流速固定</button>
         <button class="btn" id="btnClearBars">清除标记</button>
+        <button class="btn" id="btnFormatOx">格式化</button>
         <button class="btn" id="btnHighlightSelection">高亮选中部分</button>
         <button class="btn tja-only" id="btnIgnoreScroll">注重目视</button>
         <button class="btn" id="btnResetView">显示原谱</button>
@@ -990,24 +1038,67 @@
 </div>
 </div>
   </div>
+  <div class="app-container layout-ox" id="noteSkinPage" style="display:none;">
+    <div class="app-header">
+      <h1>Note皮肤生成</h1>
+    </div>
+
+    <div style="display:flex; flex-direction:column; align-items:center; gap:16px; padding:20px; max-width:100%;">
+      <!-- 可横向滚动的网格容器 -->
+      <div style="overflow-x:auto; max-width:100%; padding-bottom:10px;">
+        <div id="noteSkinGrid" style="display:grid; grid-template-columns: repeat(13, 90px); gap:5px;"></div>
+      </div>
+
+      <!-- 导出按钮独立于滚动区域，固定居中 -->
+      <div style="display:flex; gap:8px; justify-content:center; width:100%;">
+        <button class="btn btn-primary" id="btnExportNoteSkin">导出主图</button>
+        <button class="btn btn-primary" id="btnExportChipEffect">导出ChipEffect</button>
+      </div>
+    </div>
+  </div>
 
   <div id="mapModal">
     <div style="background:var(--card-bg); padding:20px; border-radius:var(--radius); max-width:600px; width:90%; max-height:80vh; overflow-y:auto; box-shadow:var(--shadow-lg);">
-      <h3 style="margin-bottom:12px;">自定义映射</h3>
-      <table id="mapTable" style="width:100%; border-collapse:collapse;">
-        <thead>
-          <tr>
-            <th>字符</th>
-            <th>音符</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-      <button class="btn" id="btnAddMapRow" style="margin-top:8px;">➕ 添加一行</button>
-      <div style="margin-top:16px; display:flex; gap:8px; justify-content:flex-end;">
-        <button class="btn" id="btnSaveMap">保存</button>
-        <button class="btn" id="btnCancelMap">取消</button>
+      <div class="map-tabs">
+        <button class="map-tab active" data-tab="custom">自定义映射</button>
+        <button class="map-tab" data-tab="official">官方映射</button>
+      </div>
+
+      <div id="customMapPane" class="map-pane active">
+        <h3 style="margin-bottom:12px;">自定义映射</h3>
+        <p style="font-size:0.85rem; color:var(--text-secondary);">自定义映射优先于官方映射生效。</p>
+        <table id="mapTable" style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr>
+              <th>字符</th>
+              <th>音符</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <button class="btn" id="btnAddMapRow" style="margin-top:8px;">➕ 添加一行</button>
+        <div style="margin-top:16px; display:flex; gap:8px; justify-content:flex-end;">
+          <button class="btn" id="btnSaveMap">保存</button>
+          <button class="btn" id="btnCancelMap">取消</button>
+        </div>
+      </div>
+
+      <div id="officialMapPane" class="map-pane">
+        <h3 style="margin-bottom:12px;">官方映射</h3>
+        <p style="font-size:0.85rem; color:var(--text-secondary);">官方映射仅供查看，不可编辑。自定义映射优先于官方映射生效。</p>
+        <div id="officialCategoriesContainer" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:12px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 官方映射分类查看弹窗（只读） -->
+  <div id="officialMapViewModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1100; align-items:center; justify-content:center;">
+    <div style="background:var(--card-bg); border-radius:var(--radius); padding:24px; max-width:500px; width:90%; max-height:70vh; overflow-y:auto; box-shadow:var(--shadow-lg);">
+      <h3 id="officialMapCategoryTitle" style="margin-bottom:16px;"></h3>
+      <div id="officialMapCategoryContent"></div>
+      <div style="margin-top:20px; display:flex; justify-content:flex-end;">
+        <button class="btn" id="btnCloseOfficialMapView">关闭</button>
       </div>
     </div>
   </div>
@@ -1075,12 +1166,22 @@
     </div>
   </div>
   <!-- 图片预览弹窗 -->
-<div id="imagePreviewModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:2000; align-items:center; justify-content:center;">
-  <div style="position:relative; max-width:90%; max-height:90%; overflow:auto;">
-    <button id="closePreviewBtn" style="position:absolute; top:10px; right:10px; background:rgba(255,255,255,0.8); border:none; border-radius:50%; width:36px; height:36px; font-size:20px; cursor:pointer; z-index:10;">✕</button>
-    <img id="previewImg" src="" style="display:block; max-width:100%; max-height:100%; transform-origin:0 0; cursor:grab;" />
+  <div id="imagePreviewModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:2000; align-items:center; justify-content:center;">
+    <div style="position:relative; max-width:90%; max-height:90%; overflow:auto;">
+      <button id="closePreviewBtn" style="position:absolute; top:10px; right:10px; background:rgba(255,255,255,0.8); border:none; border-radius:50%; width:36px; height:36px; font-size:20px; cursor:pointer; z-index:10;">✕</button>
+      <img id="previewImg" src="" style="display:block; max-width:100%; max-height:100%; transform-origin:0 0; cursor:grab;" />
+    </div>
   </div>
-</div>
+  <!-- Note皮肤版本选择弹窗 -->
+  <div id="noteSkinVersionModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:3000; align-items:center; justify-content:center;">
+    <div style="background:var(--card-bg); border-radius:var(--radius); padding:24px; max-width:400px; width:90%; box-shadow:var(--shadow-lg);">
+      <h3 style="margin-bottom:16px;">请选择模拟器版本</h3>
+      <button class="btn btn-primary" id="btnTNDE">TaikoNijiiroDondaEx</button>
+      <div style="margin-top:16px; display:flex; justify-content:flex-end;">
+        <button class="btn" id="btnCloseNoteSkinVersion">取消</button>
+      </div>
+    </div>
+  </div>
   <script>
     (() => {
       // ==================== DOM 元素 ====================
@@ -1114,6 +1215,7 @@
       const btnDownloadImage = document.getElementById('btnDownloadImage');
       const btnSaveTja = document.getElementById('btnSaveTja');
       const btnClearBars = document.getElementById('btnClearBars');
+      const btnFormatOx = document.getElementById('btnFormatOx');
       const controlsRow = document.getElementById('controlsRow');
       const legendBox = document.getElementById('legendBox');
       const btnEditMap = document.getElementById('btnEditMap');
@@ -1157,6 +1259,14 @@
       const rowSpacingItem = document.getElementById('rowSpacingItem');
       const btnRemoveOtherCourses = document.getElementById('btnRemoveOtherCourses');
       const btnFixedBpmApplyTja = document.getElementById('btnFixedBpmApplyTja');
+      const btnNoteSkin = document.getElementById('btnNoteSkin');
+      const noteSkinVersionModal = document.getElementById('noteSkinVersionModal');
+      const btnTNDE = document.getElementById('btnTNDE');
+      const btnCloseNoteSkinVersion = document.getElementById('btnCloseNoteSkinVersion');
+      const noteSkinPage = document.getElementById('noteSkinPage');
+      const noteSkinGrid = document.getElementById('noteSkinGrid');
+      const btnExportNoteSkin = document.getElementById('btnExportNoteSkin');
+      const btnExportChipEffect = document.getElementById('btnExportChipEffect');
 
       // ==================== 常量与全局变量 ====================
       const IMG_SMALL = 106,
@@ -1269,6 +1379,14 @@
       #START
       1,2,3,4,
       #END`;
+      // Note皮肤：4行13列，文件名或null
+      const noteSkinGridData = [
+        ['000','001','002','003','004','005','006','007','008','009','010','011','012'],
+        [null,'101','102','103','104','105','006','007','108','009','010','111','012'],
+        [null,'201','202','103','104','205','006','007','108','009','010','211','012'],
+        [null,'001','002','003','004',null,null,null,null,null,null,null,null]
+      ];
+      let noteSkinCells = Array(4).fill().map(() => Array(13).fill(null));  // 二维存储
 
       function checkAllLoaded() {
         const allKeys = [];
@@ -1480,7 +1598,30 @@
           default: return '#900000';
         }
       }
-      
+
+      function showOfficialCategory(categoryName) {
+          const categoryData = OFFICIAL_MAP_CATEGORIES[categoryName];
+          if (!categoryData) return;
+
+          document.getElementById('officialMapCategoryTitle').textContent = categoryName;
+          const contentDiv = document.getElementById('officialMapCategoryContent');
+          contentDiv.innerHTML = '';
+
+          // 使用表格展示
+          const table = document.createElement('table');
+          table.style.width = '100%';
+          table.style.borderCollapse = 'collapse';
+          let html = '<thead><tr><th style="padding:6px; border-bottom:1px solid var(--border);">字符</th><th style="padding:6px; border-bottom:1px solid var(--border);">音符</th></tr></thead><tbody>';
+          for (const [ch, note] of Object.entries(categoryData)) {
+              html += `<tr><td style="padding:6px; border-bottom:1px solid var(--border);">${escapeHtml(ch)}</td><td style="padding:6px; border-bottom:1px solid var(--border); font-family:var(--font-mono);">${escapeHtml(note)}</td></tr>`;
+          }
+          html += '</tbody>';
+          table.innerHTML = html;
+          contentDiv.appendChild(table);
+
+          document.getElementById('officialMapViewModal').style.display = 'flex';
+      }
+
       function parseGlobal(input) {
         const norm = expandRepeat(normalize(input));
         const rows = [];
@@ -2750,6 +2891,7 @@ function openImagePreview(canvas) {
         const processSegment = (tokens) => {
           if (!tokens.length || !curCourse) return;
           const n = tokens.length;
+          const startScrollValue = globalPrevScrollMarker ?? currentScrollMarker ?? 1;
           const baseGap = DEFAULT_GAP * 16 * a / n;
           const elements = [];
           const getNextBalloonSize = () => {
@@ -2903,7 +3045,7 @@ function openImagePreview(canvas) {
           // 第一个元素标记为小节线
           elements[0].hasBar = true;
           
-          curCourse.rows.push({ elements, baseGap, branch: currentBranch , startScroll: globalPrevScrollMarker ?? 1});
+          curCourse.rows.push({ elements, baseGap, branch: currentBranch , startScroll: startScrollValue});
         };
 
         const applyDirective = (dir) => {
@@ -2982,6 +3124,7 @@ function openImagePreview(canvas) {
           if (!firstCourseSeen && !isCourseLine) {
               globalHeaderLines.push(rawLine);
           } else if (firstCourseSeen && !isCourseLine && curCourse) {
+              if (!curCourse.rawLines) curCourse.rawLines = [];  // 防御：如果不存在则初始化
               curCourse.rawLines.push(rawLine);
           }
           if (rawLine.startsWith('TITLE:')) {
@@ -3049,7 +3192,8 @@ function openImagePreview(canvas) {
                     hasBranch: false,
                     style: 'Single',
                     chartRole: 'Single',
-                    viewType: 'normal'
+                    viewType: 'normal',
+                    rawLines: []
                 };
             }
 
@@ -3643,6 +3787,13 @@ function openImagePreview(canvas) {
           courseContainer.appendChild(btn);
         }
         courseContainer.style.display = tjaCourses.length ? 'flex' : 'none';
+        if (btnRemoveOtherCourses) {
+            if (tjaModeActive && tjaCourses.length > 1) {
+                btnRemoveOtherCourses.style.display = 'inline-flex';
+            } else {
+                btnRemoveOtherCourses.style.display = 'none';
+            }
+        }
       }
 
       function isTagTeamCourse(course) {
@@ -3654,6 +3805,9 @@ function openImagePreview(canvas) {
         document.querySelectorAll('.tja-only').forEach(e => e.style.display = tjaModeActive ? 'inline-flex' : 'none');
         tjaUploadBtn.style.display = tjaModeActive ? 'inline-flex' : 'none';
         btnClearBars.style.display = tjaModeActive ? 'none' : 'inline-flex';
+        if (btnFormatOx) {
+            btnFormatOx.style.display = tjaModeActive ? 'none' : 'inline-flex';
+        }
         btnIgnoreScroll.classList.toggle('active', visualFocusActive);
         legendBox.style.display = tjaModeActive ? 'none' : ''; 
         const mergeLabel = mergeViewCheckbox.closest('label');
@@ -3974,6 +4128,201 @@ function openImagePreview(canvas) {
         rebuildBranchOrderList();
         optionsModal.style.display = 'flex';
       }
+      // 打开弹窗
+      function openNoteSkinModal() {
+          noteSkinModal.style.display = 'flex';
+          noteSkinVersionSelect.style.display = 'block';
+          noteSkinEditor.style.display = 'none';
+          noteSkinCells = [];
+          noteSkinGrid.innerHTML = '';
+      }
+
+      // 进入编辑器
+      function enterNoteSkinEditor(version) {
+          noteSkinVersionSelect.style.display = 'none';
+          noteSkinEditor.style.display = 'block';
+          buildNoteSkinGrid();
+      }
+
+      // 构建4x13网格
+      function buildNoteSkinGrid() {
+          noteSkinGrid.innerHTML = '';
+          // 重新初始化二维数组
+          noteSkinCells = Array(4).fill().map(() => Array(13).fill(null));
+
+          for (let r = 0; r < 4; r++) {
+              for (let c = 0; c < 13; c++) {
+                  const filename = noteSkinGridData[r][c];
+                  const cellDiv = document.createElement('div');
+                  cellDiv.style.width = '90px';
+                  cellDiv.style.height = '90px';
+                  cellDiv.style.border = '1px solid var(--border)';
+                  cellDiv.style.position = 'relative';
+                  cellDiv.style.display = 'flex';
+                  cellDiv.style.alignItems = 'center';
+                  cellDiv.style.justifyContent = 'center';
+                  cellDiv.style.background = 'transparent';
+
+                  if (filename) {
+                      const img = new Image();
+                      img.style.width = '100%';
+                      img.style.height = '100%';
+                      img.style.objectFit = 'contain';
+                      img.src = `img/Skin/TNDE/${filename}.png`;
+                      const promise = new Promise((resolve) => {
+                          img.onload = () => resolve();
+                          img.onerror = () => resolve();
+                      });
+                      const cellObj = { filename, img, promise, isUploaded: false };
+                      noteSkinCells[r][c] = cellObj;
+
+                      cellDiv.appendChild(img);
+
+                      const uploadBtn = document.createElement('button');
+                      uploadBtn.textContent = '上传';
+                      uploadBtn.style.position = 'absolute';
+                      uploadBtn.style.bottom = '2px';
+                      uploadBtn.style.right = '2px';
+                      uploadBtn.style.padding = '1px 4px';
+                      uploadBtn.style.fontSize = '10px';
+                      uploadBtn.addEventListener('click', (e) => {
+                          e.stopPropagation();
+                          const fileInput = document.createElement('input');
+                          fileInput.type = 'file';
+                          fileInput.accept = 'image/png';
+                          fileInput.addEventListener('change', (ev) => {
+                              const file = ev.target.files[0];
+                              if (file) {
+                                  const reader = new FileReader();
+                                  reader.onload = (e) => {
+                                      img.src = e.target.result;
+                                      cellObj.isUploaded = true;
+                                      cellObj.promise = new Promise((resolve) => {
+                                          img.onload = () => resolve();
+                                          img.onerror = () => resolve();
+                                      });
+                                  };
+                                  reader.readAsDataURL(file);
+                              }
+                          });
+                          fileInput.click();
+                      });
+                      cellDiv.appendChild(uploadBtn);
+                  } else {
+                      cellDiv.style.border = '1px dashed var(--border)';
+                      const span = document.createElement('span');
+                      span.textContent = '无';
+                      span.style.color = '#ccc';
+                      cellDiv.appendChild(span);
+                      // 对应位置在 noteSkinCells 中保持 null
+                  }
+                  noteSkinGrid.appendChild(cellDiv);
+              }
+          }
+      }
+
+      async function exportNoteSkin() {
+          // 等待所有图片加载完成
+          const allCells = noteSkinCells.flat().filter(cell => cell !== null);
+          await Promise.all(allCells.map(cell => cell.promise));
+
+          const canvas = document.createElement('canvas');
+          canvas.width = 13 * 130;
+          canvas.height = 4 * 130;
+          const ctx = canvas.getContext('2d');
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          for (let r = 0; r < 4; r++) {
+              for (let c = 0; c < 13; c++) {
+                  const cell = noteSkinCells[r][c];
+                  if (cell && cell.img.complete && cell.img.naturalWidth > 0) {
+                      ctx.drawImage(cell.img, c * 130, r * 130, 130, 130);
+                  }
+                  // 若 cell 为 null（无），保持透明
+              }
+          }
+
+          const url = canvas.toDataURL('image/png');
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'Notes.png';
+          a.click();
+      }
+
+      async function exportChipEffect() {
+          const chipRows = 3;
+          const chipCols = 13;
+          const size = 130;
+
+          // 收集需要绘制的单元格（可能包含 null，后续跳过）
+          const neededCells = [];
+
+          // 第 1 行：全部使用原始第 1 行
+          for (let c = 0; c < chipCols; c++) {
+              neededCells.push(noteSkinCells[0][c]);
+          }
+
+          // 第 2 行：第一列用图片 1（noteSkinCells[0][0]），其余用原始第 2 行
+          neededCells.push(noteSkinCells[0][0]);
+          for (let c = 1; c < chipCols; c++) {
+              neededCells.push(noteSkinCells[1][c]);
+          }
+
+          // 第 3 行：第一列用图片 1，其余用原始第 3 行
+          neededCells.push(noteSkinCells[0][0]);
+          for (let c = 1; c < chipCols; c++) {
+              neededCells.push(noteSkinCells[2][c]);
+          }
+
+          // 等待所有有效单元格的图片加载完成
+          const validCells = neededCells.filter(cell => cell !== null);
+          await Promise.all(validCells.map(cell => cell.promise));
+
+          // 创建主画布
+          const canvas = document.createElement('canvas');
+          canvas.width = chipCols * size;
+          canvas.height = chipRows * size;
+          const ctx = canvas.getContext('2d');
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          // 辅助函数：将某个单元格绘制为白色剪影
+          function drawWhiteCell(cell, x, y) {
+              if (!cell || !cell.img.complete || cell.img.naturalWidth === 0) return;
+              const tempCanvas = document.createElement('canvas');
+              tempCanvas.width = size;
+              tempCanvas.height = size;
+              const tempCtx = tempCanvas.getContext('2d');
+              tempCtx.drawImage(cell.img, 0, 0, size, size);
+              tempCtx.globalCompositeOperation = 'source-in';
+              tempCtx.fillStyle = '#ffffff';
+              tempCtx.fillRect(0, 0, size, size);
+              ctx.drawImage(tempCanvas, x, y);
+          }
+
+          // 绘制第 1 行
+          for (let c = 0; c < chipCols; c++) {
+              drawWhiteCell(noteSkinCells[0][c], c * size, 0);
+          }
+
+          // 绘制第 2 行
+          drawWhiteCell(noteSkinCells[0][0], 0, size);
+          for (let c = 1; c < chipCols; c++) {
+              drawWhiteCell(noteSkinCells[1][c], c * size, size);
+          }
+
+          // 绘制第 3 行
+          drawWhiteCell(noteSkinCells[0][0], 0, size * 2);
+          for (let c = 1; c < chipCols; c++) {
+              drawWhiteCell(noteSkinCells[2][c], c * size, size * 2);
+          }
+
+          // 导出
+          const url = canvas.toDataURL('image/png');
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'ChipEffect.png';
+          a.click();
+      }
 
       function rebuildBranchOrderList() {
         branchOrderList.innerHTML = '';
@@ -4279,6 +4628,15 @@ function openImagePreview(canvas) {
         }
       });
 
+      document.getElementById('btnCloseOfficialMapView').addEventListener('click', () => {
+          document.getElementById('officialMapViewModal').style.display = 'none';
+      });
+      window.addEventListener('click', (e) => {
+          if (e.target === document.getElementById('officialMapViewModal')) {
+              document.getElementById('officialMapViewModal').style.display = 'none';
+          }
+      });
+
       btnOptions.addEventListener('click', openOptionsModal);
       btnOptionsApply.addEventListener('click', applyOptionsAndClose);
       btnOptionsCancel.addEventListener('click', () => {
@@ -4577,6 +4935,40 @@ function openImagePreview(canvas) {
         render();
       });
 
+      btnFormatOx.addEventListener('click', () => {
+          // 仅在 ox 模式下有效
+          if (tjaModeActive) return;
+
+          let text = textarea.value;
+          if (!text.trim()) {
+              return; // 输入为空，不处理
+          }
+
+          // 1. 替换中文字符（使用内置 + 用户自定义映射）
+          text = replaceChineseNotes(text);
+
+          // 2. 标准化符号和大小写
+          text = normalize(text);
+
+          // 3. 展开 <...>n 重复标记
+          text = expandRepeat(text);
+
+          // 更新输入框内容
+          textarea.value = text;
+
+          // 清除画布缓存和行合并缓存，确保重新渲染
+          canvasCache.clear();
+          rowMergeCache.clear();
+
+          // 显示加载动画并渲染
+          showLoading();
+          render();
+      });
+      
+      document.querySelectorAll('.map-tab').forEach(btn => {
+          btn.addEventListener('click', () => switchMapTab(btn.dataset.tab));
+      });
+
       btnDownloadImage.addEventListener('click', () => {
         if (!currentRowLayouts.length) return;
         const doInv = invertActive,
@@ -4783,120 +5175,166 @@ function openImagePreview(canvas) {
         return m;
       }
 
-      function getFallbackChineseMap() {
-        return {
-          // ===== 六十四卦全称（长度6的 o/x 串） =====
-          '重乾': 'oooooo',
-          '重坤': 'xxxxxx',
-          '屯': 'oxxxox',
-          '蒙': 'xoxxxo',
-          '需': 'oooxox',
-          '讼': 'xoxooo',
-          '师': 'xoxxxx',
-          '比': 'xxxxox',
-          '小畜': 'oooxoo',
-          '履': 'ooxooo',
-          '泰': 'oooxxx',
-          '否': 'xxxooo',
-          '同人': 'oxoooo',
-          '大有': 'ooooxo',
-          '谦': 'xxoxxx',
-          '豫': 'xxxoxx',
-          '随': 'oxxoox',
-          '蛊': 'xooxxo',
-          '临': 'ooxxxx',
-          '观': 'xxxxoo',
-          '噬嗑': 'oxxoxo',
-          '贲': 'oxoxxo',
-          '剥': 'xxxxxo',
-          '复': 'oxxxxx',
-          '无妄': 'oxxooo',
-          '大畜': 'oooxxo',
-          '颐': 'oxxxxo',
-          '大过': 'xoooox',
-          '重坎': 'xoxxox',
-          '重离': 'oxooxo',
-          '咸': 'xxooox',
-          '恒': 'xoooxx',
-          '遁': 'xxoooo',
-          '大壮': 'ooooxx',
-          '晋': 'xxxoxo',
-          '明夷': 'oxoxxx',
-          '家人': 'oxoxoo',
-          '睽': 'ooxoxo',
-          '蹇': 'xxoxox',
-          '解': 'xoxoxx',
-          '损': 'ooxxxo',
-          '益': 'oxxxoo',
-          '夬': 'ooooox',
-          '姤': 'xooooo',
-          '萃': 'xxxoox',
-          '升': 'xooxxx',
-          '困': 'xoxoox',
-          '井': 'xooxox',
-          '革': 'oxooox',
-          '鼎': 'xoooxo',
-          '重震': 'oxxoxx',
-          '重艮': 'xxoxxo',
-          '渐': 'xxoxoo',
-          '归妹': 'ooxoxx',
-          '丰': 'oxooxx',
-          '旅': 'xxooxo',
-          '重巽': 'xooxoo',
-          '重兑': 'ooxoox',
-          '涣': 'xoxxoo',
-          '节': 'ooxxox',
-          '中孚': 'ooxxoo',
-          '小过': 'xxooxx',
-          '既济': 'oxoxox',
-          '未济': 'xoxoxo',
-          // 长度为 10 的 o/x 串
-          '董': 'xxxxooooxx', 
-          // 长度为 8 的 o/x 串
-          '描': 'xxxxoooo', '猫': 'xxxxoooo', 
-          // 长度为 7 的 o/x 串
+      // 官方映射分类定义
+      const OFFICIAL_MAP_CATEGORIES = {
+        '两仪四象八卦': {
+            '乾': 'ooo',  '天': 'ooo',
+            '兑': 'oox',  '泽': 'oox',
+            '离': 'oxo',  '火': 'oxo',
+            '震': 'oxx',  '雷': 'oxx',
+            '巽': 'xoo',  '风': 'xoo',
+            '坎': 'xox',  '水': 'xox',
+            '艮': 'xxo',  '山': 'xxo',
+            '坤': 'xxx',  '地': 'xxx',
+            '太阳': 'oo',
+            '少阴': 'ox',
+            '少阳': 'xo',
+            '太阴': 'xx',
+            '阳': 'o',
+            '阴': 'x',
+        },
+
+        '六十四卦': {
+            '重乾': 'oooooo',
+            '夬': 'ooooox',
+            '大有': 'ooooxo',
+            '大壮': 'ooooxx',
+            '小畜': 'oooxoo',
+            '需': 'oooxox',
+            '大畜': 'oooxxo',
+            '泰': 'oooxxx',
+            '履': 'ooxooo',
+            '重兑': 'ooxoox',
+            '睽': 'ooxoxo',
+            '归妹': 'ooxoxx',
+            '中孚': 'ooxxoo',
+            '节': 'ooxxox',
+            '损': 'ooxxxo',
+            '临': 'ooxxxx',
+            '同人': 'oxoooo',
+            '革': 'oxooox',
+            '重离': 'oxooxo',
+            '丰': 'oxooxx',
+            '家人': 'oxoxoo',
+            '既济': 'oxoxox',
+            '贲': 'oxoxxo',
+            '明夷': 'oxoxxx',
+            '无妄': 'oxxooo',
+            '随': 'oxxoox',
+            '噬嗑': 'oxxoxo',
+            '重震': 'oxxoxx',
+            '益': 'oxxxoo',
+            '屯': 'oxxxox',
+            '颐': 'oxxxxo',
+            '复': 'oxxxxx',
+            '姤': 'xooooo',
+            '大过': 'xoooox',
+            '鼎': 'xoooxo',
+            '恒': 'xoooxx',
+            '重巽': 'xooxoo',
+            '井': 'xooxox',
+            '蛊': 'xooxxo',
+            '升': 'xooxxx',
+            '讼': 'xoxooo',
+            '困': 'xoxoox',
+            '未济': 'xoxoxo',
+            '解': 'xoxoxx',
+            '涣': 'xoxxoo',
+            '重坎': 'xoxxox',
+            '蒙': 'xoxxxo',
+            '师': 'xoxxxx',
+            '遁': 'xxoooo',
+            '咸': 'xxooox',
+            '旅': 'xxooxo',
+            '小过': 'xxooxx',
+            '渐': 'xxoxoo',
+            '蹇': 'xxoxox',
+            '重艮': 'xxoxxo',
+            '谦': 'xxoxxx',
+            '否': 'xxxooo',
+            '萃': 'xxxoox',
+            '晋': 'xxxoxo',
+            '豫': 'xxxoxx',
+            '观': 'xxxxoo',
+            '比': 'xxxxox',
+            '剥': 'xxxxxo',
+            '重坤': 'xxxxxx',
+        },
+        '象形文字': {
+          '董': 'xxxxooooxx',
+          '描': 'xxxxoooo',
+          '猫': 'xxxxoooo',
           '喵': 'oxxoooo',
-          // 长度为 6 的 o/x 串
           '俉': 'xooooo',
-          // 长度为 5 的 o/x 串
           '昊': 'ooooo',
           '倡': 'xoooo',
-          // 长度为 4 的 o/x 串
           '田': 'oooo',
           '偘': 'xooo',
           '卓': 'xoox',
           '若': 'xxxo',
           '并': 'xxox',
+          '品': 'ooo', '目': 'ooo', '卉': 'xxx', '有': 'xoo', '侣': 'xoo', '卤': 'xox', '佑': 'xxo', '早': 'oox', '咕': 'oxo', '吽': 'oxx',
+          '叶': 'ox', '右': 'xo', '吕': 'oo', '日': 'oo', '回': 'oo', '爻': 'xx', '艹': 'xx',
+          '口': 'o', '乂': 'x'
+        },
+        '其他': {
+          '↖': 'ox', '↗': 'ox', '↘': 'xo', '↙': 'xo',
+          '滚红': 'oo', '滚蓝': 'xx',
+          '外': 'ox', '内': 'xo',
+          '咚': 'o', '咔': 'x',
+          'd': 'o', 'D': 'O', 'k': 'x', 'K': 'X',
+          '红': 'o', '蓝': 'x', '紫': 'Q',
+          'ど': 'o', 'ド': 'o', 'コ': 'o', 'か': 'x', 'カ': 'x',
+          '面': 'o', '边': 'x',
+          '🥵': 'o', '🥶': 'x',
+          '🔴': 'o', '🔵': 'x',
+          '愤怒': 'o', '平静': 'x',
+          '偶': 'o', '像': 'x',
+          '普': 'n', '玄': 'e', '进': 'e', '达': 'm'
+        }
+      };
 
-          // 长度为 3 的 o/x 串
-          '乾': 'ooo', '天': 'ooo', '品': 'ooo', '目': 'ooo',
-          '坤': 'xxx', '地': 'xxx', '卉': 'xxx',
-          '巽': 'xoo', '风': 'xoo', '有': 'xoo', '侣': 'xoo',
-          '坎': 'xox', '水': 'xox', '卤': 'xox',
-          '艮': 'xxo', '山': 'xxo', '佑': 'xxo',
-          '兑': 'oox', '泽': 'oox', '早': 'oox',
-          '离': 'oxo', '火': 'oxo', '咕': 'oxo',
-          '震': 'oxx', '雷': 'oxx', '吽': 'oxx',
-
-          // 长度为 2 的 o/x 串
-          '外': 'ox', '叶': 'ox', '少阴': 'ox', '↖': 'ox', '↗': 'ox',
-          '内': 'xo', '右': 'xo', '少阳': 'xo', '↘': 'xo', '↙': 'xo',
-          '太阳': 'oo', '滚红': 'oo', '吕': 'oo', '日': 'oo', '回': 'oo',
-          '太阴': 'xx', '滚蓝': 'xx', '爻': 'xx', '艹': 'xx',
-
-          // 长度为 1 的 o/x 串
-          '咚': 'o', 'd': 'o', 'D' : 'O', '口': 'o', '阳': 'o', '红': 'o', '面': 'o', '🥵': 'o', 'ど': 'o', 'ド': 'o', 'コ': 'o', '🔴': 'o', '愤怒': 'o', '偶': 'o',
-          '咔': 'x', 'k': 'x', 'K' : 'X', '乂': 'x', '阴': 'x', '蓝': 'x', '边': 'x', '🥶': 'x', 'か': 'x', 'カ': 'x', '🔵': 'x', '平静': 'x', '像': 'x',
-          '普': 'n', '玄': 'e', '进': 'e', '达': 'm', '紫': 'Q'
-        };
+      function getFallbackChineseMap() {
+        const flat = {};
+        for (const category of Object.values(OFFICIAL_MAP_CATEGORIES)) {
+          Object.assign(flat, category);
+        }
+        return flat;
       }
 
       function openMapEditor() {
-        mapTableBody.innerHTML = '';
-        for (const [ch, note] of Object.entries(chineseNoteMap).filter(([k, v]) => !BASIC_NOTES.includes(v) && k.length > 0)) {
-          addMapRow(ch, note);
-        }
-        mapModal.style.display = 'flex';
+          // 填充自定义映射表格（仅用户自定义映射）
+          mapTableBody.innerHTML = '';
+          for (const [ch, note] of Object.entries(userChineseMap)) {
+              if (ch && ch.length > 0) {
+                  addMapRow(ch, note);
+              }
+          }
+
+          // 填充官方映射分类按钮
+          const container = document.getElementById('officialCategoriesContainer');
+          container.innerHTML = '';
+          for (const categoryName of Object.keys(OFFICIAL_MAP_CATEGORIES)) {
+              const btn = document.createElement('button');
+              btn.className = 'official-category-btn';
+              btn.textContent = categoryName;
+              btn.addEventListener('click', () => showOfficialCategory(categoryName));
+              container.appendChild(btn);
+          }
+
+          // 默认显示自定义映射 Tab
+          switchMapTab('custom');
+          mapModal.style.display = 'flex';
+      }
+
+      function switchMapTab(tabName) {
+          // 切换 Tab 按钮样式
+          document.querySelectorAll('.map-tab').forEach(btn => {
+              btn.classList.toggle('active', btn.dataset.tab === tabName);
+          });
+          // 切换内容面板
+          document.getElementById('customMapPane').classList.toggle('active', tabName === 'custom');
+          document.getElementById('officialMapPane').classList.toggle('active', tabName === 'official');
       }
 
       function addMapRow(ch = '', note = '') {
@@ -5062,14 +5500,46 @@ function openImagePreview(canvas) {
       sidebarToggle.addEventListener('click', () => {
         sidebar.classList.toggle('open');
       });
+      // 侧边栏按钮：打开版本选择弹窗
+      btnNoteSkin.addEventListener('click', () => {
+          noteSkinVersionModal.style.display = 'flex';
+          sidebar.classList.remove('open');
+      });
 
+      // 关闭版本选择弹窗
+      btnCloseNoteSkinVersion.addEventListener('click', () => {
+          noteSkinVersionModal.style.display = 'none';
+      });
+      noteSkinVersionModal.addEventListener('click', (e) => {
+          if (e.target === noteSkinVersionModal) {
+              noteSkinVersionModal.style.display = 'none';
+          }
+      });
+
+      // 选择版本后进入独立页面
+      btnTNDE.addEventListener('click', () => {
+          noteSkinVersionModal.style.display = 'none';
+          // 隐藏其他页面
+          taikoPage.style.display = 'none';
+          nameplatePage.style.display = 'none';
+          noteSkinPage.style.display = '';
+          // 构建网格
+          buildNoteSkinGrid();
+      });
+
+      // 导出
+      btnExportNoteSkin.addEventListener('click', () => {
+          exportNoteSkin();
+      });
       // 点击页面空白关闭侧边栏（可选）
       document.addEventListener('click', (e) => {
         if (!sidebar.contains(e.target) && e.target !== sidebarToggle) {
           sidebar.classList.remove('open');
         }
       });
-
+      btnExportChipEffect.addEventListener('click', () => {
+          exportChipEffect();
+      });
       // 页面切换
       sidebarBtns.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -5079,9 +5549,11 @@ function openImagePreview(canvas) {
           if (page === 'taiko') {
             taikoPage.style.display = '';
             nameplatePage.style.display = 'none';
+            noteSkinPage.style.display = 'none';
           } else if (page === 'nameplate') {
             taikoPage.style.display = 'none';
             nameplatePage.style.display = '';
+            noteSkinPage.style.display = 'none';
             // 等待图片加载完成后绘制
             if (nameplateImages.bars.length === 12 && 
                 nameplateLoaded.shadow && 
