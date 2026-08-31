@@ -866,7 +866,8 @@
 
   <!-- 侧边栏 -->
   <div id="sidebar" class="sidebar">
-    <button class="sidebar-menu-btn active" data-page="taiko">谱面生成</button>
+    <button class="sidebar-menu-btn active" data-page="taiko">谱面图生成</button>
+    <button class="sidebar-menu-btn" id="btnExercise">练习谱生成</button>
     <button class="sidebar-menu-btn" data-page="nameplate">歌曲名牌</button>
     <button class="sidebar-menu-btn" id="btnNoteSkin">Note皮肤生成</button>
     <a href="https://taiko.donders.work/" target="_blank" rel="noopener noreferrer" class="sidebar-menu-btn" style="text-decoration:none; display:block;">更多工具</a>
@@ -1056,7 +1057,73 @@
       </div>
     </div>
   </div>
-
+  <!-- 练习谱生成页面 -->
+<div class="app-container layout-ox" id="exercisePage" style="display:none;">
+  <div class="app-header">
+    <h1>练习谱生成器</h1>
+  </div>
+  <div style="display:grid; grid-template-columns: 400px 1fr; gap:20px; padding:20px;">
+    <!-- 左列 -->
+    <div style="display:flex; flex-direction:column; gap:15px;">
+      <div style="background:#f8f5f0; border-radius:8px; padding:15px;">
+        <h3 style="margin-bottom:10px;">上传文件</h3>
+        <div style="margin-bottom:8px;">
+          <label>TJA文件：</label>
+          <input type="file" id="exerciseTjaFile" accept=".tja,.txt" />
+        </div>
+        <div>
+          <label>音频文件：</label>
+          <input type="file" id="exerciseAudioFile" accept=".ogg,.mp3,.wav,.m4a" />
+        </div>
+      </div>
+      <div style="background:#f8f5f0; border-radius:8px; padding:15px;">
+        <h3 style="margin-bottom:10px;">选项</h3>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div>
+            <label>选择COURSE：</label>
+            <select id="exerciseCourseSelect" style="width:100%; padding:4px; border:1px solid var(--border); border-radius:4px;"></select>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <label>预览小节数：</label>
+            <input type="number" id="exercisePreviewCount" value="1" min="1" style="width:60px; padding:4px; border:1px solid var(--border); border-radius:4px;" />
+            <span>当前起始小节：<span id="exerciseStartMeasureLabel">1</span></span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <label>标题：</label>
+            <input type="text" id="exerciseTitle" value="Exercise" style="flex:1; padding:4px; border:1px solid var(--border); border-radius:4px;" />
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+            <button class="btn" id="btnExercisePrevMeasure4">4◀</button>
+            <button class="btn" id="btnExercisePrevMeasure">1◀</button>
+            <button class="btn" id="btnExerciseNextMeasure">▶1</button>
+            <button class="btn" id="btnExerciseNextMeasure4">▶4</button>
+            <button class="btn btn-primary" id="btnExerciseInsert">插入到练习谱</button>
+            <div id="exerciseBranchWarning" style="color:red; display:none;">暂不支持分歧谱面</div>
+            <button class="btn" id="btnExerciseDeleteLast">删除最后一小节</button>
+          </div>
+        </div>
+      </div>
+      <div style="background:var(--preview-bg); border-radius:8px; padding:15px; min-height:200px;">
+        <h3 style="margin-bottom:10px; color:var(--preview-text);">选取片段预览</h3>
+        <div id="exerciseSelectionPreview" style="min-height:150px; display:flex; align-items:center; justify-content:center; color:var(--preview-text);">
+          <span>请上传TJA文件</span>
+        </div>
+      </div>
+    </div>
+    <!-- 右列 -->
+    <div style="display:flex; flex-direction:column; gap:15px;">
+      <div style="background:var(--preview-bg); border-radius:8px; padding:15px; flex:1;">
+        <h3 style="margin-bottom:10px; color:var(--preview-text);">最终成品预览</h3>
+        <div id="exerciseFinalPreview" style="min-height:300px; display:flex; align-items:center; justify-content:center; color:var(--preview-text);">
+          <span>练习谱预览将显示在此处</span>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; justify-content:flex-end;">
+        <button class="btn btn-primary" id="btnExerciseExport">导出练习谱</button>
+      </div>
+    </div>
+  </div>
+</div>
   <div id="mapModal">
     <div style="background:var(--card-bg); padding:20px; border-radius:var(--radius); max-width:600px; width:90%; max-height:80vh; overflow-y:auto; box-shadow:var(--shadow-lg);">
       <div class="map-tabs">
@@ -1267,6 +1334,24 @@
       const noteSkinGrid = document.getElementById('noteSkinGrid');
       const btnExportNoteSkin = document.getElementById('btnExportNoteSkin');
       const btnExportChipEffect = document.getElementById('btnExportChipEffect');
+      const btnExercise = document.getElementById('btnExercise');
+      const exercisePage = document.getElementById('exercisePage');
+      const exerciseTjaFile = document.getElementById('exerciseTjaFile');
+      const exerciseAudioFile = document.getElementById('exerciseAudioFile');
+      const exerciseCourseSelect = document.getElementById('exerciseCourseSelect');
+      const exercisePreviewCount = document.getElementById('exercisePreviewCount');
+      const exerciseStartMeasureLabel = document.getElementById('exerciseStartMeasureLabel');
+      const exerciseTitle = document.getElementById('exerciseTitle');
+      const btnExercisePrevMeasure = document.getElementById('btnExercisePrevMeasure');
+      const btnExerciseNextMeasure = document.getElementById('btnExerciseNextMeasure');
+      const btnExerciseInsert = document.getElementById('btnExerciseInsert');
+      const btnExerciseDeleteLast = document.getElementById('btnExerciseDeleteLast');
+      const exerciseSelectionPreview = document.getElementById('exerciseSelectionPreview');
+      const exerciseFinalPreview = document.getElementById('exerciseFinalPreview');
+      const btnExerciseExport = document.getElementById('btnExerciseExport');
+      const exerciseBranchWarning = document.getElementById('exerciseBranchWarning');
+      const btnExercisePrevMeasure4 = document.getElementById('btnExercisePrevMeasure4');
+      const btnExerciseNextMeasure4 = document.getElementById('btnExerciseNextMeasure4');
 
       // ==================== 常量与全局变量 ====================
       const IMG_SMALL = 106,
@@ -1387,7 +1472,17 @@
         [null,'001','002','003','004',null,null,null,null,null,null,null,null]
       ];
       let noteSkinCells = Array(4).fill().map(() => Array(13).fill(null));  // 二维存储
-
+      let exerciseState = {
+          sourceTja: null,
+          sourceAudio: null,
+          parsedCourses: [],
+          selectedCourse: null,
+          previewStartMeasure: 0,
+          previewCount: 1,
+          insertedMeasures: [],   // 新增：存储已插入的小节信息
+          exerciseAudioChunks: [], // 音频片段
+          offset: 0,
+      };
       function checkAllLoaded() {
         const allKeys = [];
         [0, 1, 2].forEach(s => {
@@ -1538,31 +1633,39 @@
       }
 
       function normalize(s) {
-        return s
-          .replace(/（/g, '(')
-          .replace(/）/g, ')')
-          .replace(/【/g, '[')
-          .replace(/】/g, ']')
-          .replace(/｛/g, '{')
-          .replace(/｝/g, '}')
-          .replace(/，/g, ' ')
-          .replace(/,/g, ' ')
-          // 新增：全角/异体尖括号统一为半角
-          .replace(/＜/g, '<')
-          .replace(/＞/g, '>')
-          .replace(/〈/g, '<')
-          .replace(/〉/g, '>')// 特殊音符大小写宽容
-          .replace(/A/g, 'a')
-          .replace(/S/g, 's')
-          .replace(/H/g, 'h')
-          .replace(/R/g, 'r')
-          .replace(/T/g, 't')
-          .replace(/B/g, 'b')
-          .replace(/P/g, 'p')
-          .replace(/E/g, 'e')
-          .replace(/M/g, 'm')
-          .replace(/G/g, 'g')
-          .replace(/q/g, 'Q');
+          const lines = s.split('\n');
+          const resultLines = lines.map(line => {
+              // 如果该行以"标注"开头（忽略前导空格），不进行任何替换
+              if (line.trimStart().startsWith('标注')) {
+                  return line;
+              }
+              // 对其他行进行标准化处理
+              return line
+                  .replace(/（/g, '(')
+                  .replace(/）/g, ')')
+                  .replace(/【/g, '[')
+                  .replace(/】/g, ']')
+                  .replace(/｛/g, '{')
+                  .replace(/｝/g, '}')
+                  .replace(/，/g, ' ')
+                  .replace(/,/g, ' ')
+                  .replace(/＜/g, '<')
+                  .replace(/＞/g, '>')
+                  .replace(/〈/g, '<')
+                  .replace(/〉/g, '>')
+                  .replace(/A/g, 'a')
+                  .replace(/S/g, 's')
+                  .replace(/H/g, 'h')
+                  .replace(/R/g, 'r')
+                  .replace(/T/g, 't')
+                  .replace(/B/g, 'b')
+                  .replace(/P/g, 'p')
+                  .replace(/E/g, 'e')
+                  .replace(/M/g, 'm')
+                  .replace(/G/g, 'g')
+                  .replace(/q/g, 'Q');
+          });
+          return resultLines.join('\n');
       }
 
       function getGapFactor(a, b) {
@@ -1655,6 +1758,43 @@
 
         for (let i = 0; i < norm.length; i++) {
           const ch = norm[i];
+              // 如果检测到"标注"行，跳过整行
+          if (ch === '标' && i + 1 < norm.length && norm[i + 1] === '注') {
+              const newlineIdx = norm.indexOf('\n', i);
+              if (newlineIdx === -1) {
+                  // 没有换行符，标注是最后一行，处理完后直接结束
+                  const annotateStr = norm.slice(i + 2).trim();
+                  if (rows.length > 0) {
+                      const lastElements = rows[rows.length - 1];
+                      const chars = [...annotateStr];
+                      let idx = 0;
+                      for (const el of lastElements) {
+                          if (el.type !== 'space' && el.type !== 'sliderBody' && el.type !== 'bigSliderBody' && el.type !== 'balloonBody') {
+                              if (idx < chars.length) {
+                                  el.annotation = chars[idx++];
+                              } else break;
+                          }
+                      }
+                  }
+                  break;
+              }
+              const annotateStr = norm.slice(i + 2, newlineIdx).trim();
+              if (rows.length > 0) {
+                  const lastElements = rows[rows.length - 1];
+                  const chars = [...annotateStr];
+                  let idx = 0;
+                  for (const el of lastElements) {
+                      if (el.type !== 'space' && el.type !== 'sliderBody' && el.type !== 'bigSliderBody' && el.type !== 'balloonBody') {
+                          if (idx < chars.length) {
+                              el.annotation = chars[idx++];
+                          } else break;
+                      }
+                  }
+              }
+              // 设置 i 为换行符前一个字符，循环末尾 i++ 后会指向换行符
+              i = newlineIdx - 1;
+              continue;
+          }
           // 检测染色标记（优先匹配双字母组合）
           let marker = null;
           if (i + 1 < norm.length && norm[i] === 'e' && norm[i + 1] === 'g') {
@@ -1690,38 +1830,20 @@
             continue;
           }
           if (ch === '\n') {
-            while (sliderStack.length) sliderStack.pop().el.hasTail = false;
+              while (sliderStack.length) sliderStack.pop().el.hasTail = false;
 
-            const lineText = norm.slice(lineStartIndex, i).trim();
+              const lineText = norm.slice(lineStartIndex, i).trim();
 
-            // 如果当前行以“标注”开头，则作为上一行的标注处理，不产生新行
-            if (lineText.startsWith('标注')) {
-              cur = [];
-              const annotateStr = lineText.slice(2).trim();
-              if (rows.length > 0) {
-                const lastElements = rows[rows.length - 1];
-                const chars = [...annotateStr];
-                let idx = 0;
-                for (const el of lastElements) {
-                  if (el.type !== 'space' && el.type !== 'sliderBody' && el.type !== 'bigSliderBody' && el.type !== 'balloonBody') {
-                    if (idx < chars.length) {
-                      el.annotation = chars[idx++];
-                    } else break;
-                  }
-                }
-              }
-            } else {
-              // 普通行：如果 cur 非空则推入 rows
+              // 普通行处理（标注行已在前面被跳过）
               if (cur.length) rows.push(cur);
               cur = [];
               if (!'()[]{}'.includes(ch)) {
-                pendHigh = false;
-                pendBar = false;
+                  pendHigh = false;
+                  pendBar = false;
               }
-            }
 
-            lineStartIndex = i + 1;
-            continue;
+              lineStartIndex = i + 1;
+              continue;
           }
           if (ch === '*') {
             pendHigh = true;
@@ -1783,13 +1905,6 @@
                 el.transparent = true;
             }
 
-            if (pendTransparent) {
-              if (elType !== 'space' && elType !== 'sliderBody' && elType !== 'bigSliderBody' && elType !== 'balloonBody') {
-                el.transparent = true;
-              }
-              pendTransparent = false;
-            }
-
             if (pendBar) {
               el.hasBar = true;
               pendBar = false;
@@ -1818,6 +1933,13 @@
                 el.pairId = head.id;
                 el.pairChar = ch;
               }
+            }
+
+            if (pendTransparent) {
+              if (elType !== 'space' && elType !== 'sliderBody' && elType !== 'bigSliderBody' && elType !== 'balloonBody') {
+                el.transparent = true;
+              }
+              pendTransparent = false;
             }
 
             push(el);
@@ -2180,508 +2302,530 @@
       }
 
       function drawLine(canvas, layout, doInvert, doSmallify, randomRow, hideBars, balloonTail, gogoActive, showTrack) {
-        const getActualStyle = (el, currentStyle) => {
-          if (tjaModeActive && currentStyle === 1 && el && el.gogo) {
-            return 2;
-          }
-          return currentStyle;
-        };
-        const ctx = canvas.getContext('2d');
-        canvas.width = Math.ceil(layout.width);
-        canvas.height = ROW_TOTAL_HEIGHT + (layout.bpmList ? 90 : 0);
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        if (showTrack) {
-          if (gogoActive) {
-            if (layout.segments && layout.segments.length) {
-              for (const seg of layout.segments) {
-                ctx.fillStyle = getGogoBgColor(layout.branchType || 'COMMON', seg.gogo);
-                ctx.fillRect(seg.startX, 0, seg.endX - seg.startX, FIXED_HEIGHT);
+          const getActualStyle = (el, currentStyle) => {
+              if (tjaModeActive && currentStyle === 1 && el && el.gogo) {
+                  return 2;
               }
-            } else {
-              ctx.fillStyle = getGogoBgColor(layout.branchType || 'COMMON', false);
-              ctx.fillRect(0, 0, canvas.width, FIXED_HEIGHT);
-            }
-          } else {
-            ctx.fillStyle = getGogoBgColor(layout.branchType || 'COMMON', false);
-            ctx.fillRect(0, 0, canvas.width, FIXED_HEIGHT);
-          }
-          // 绘制 <> 背景染色（使用 buildLayoutFromGroup 中生成的 colorSegments）
-          if (layout.colorSegments) {
-            for (const seg of layout.colorSegments) {
-              ctx.fillStyle = seg.color;
-              ctx.fillRect(seg.startX, 0, seg.endX - seg.startX, FIXED_HEIGHT);
-            }
-          }
-          ctx.fillStyle = '#000000';
-          ctx.fillRect(0, FIXED_HEIGHT, canvas.width, DECORATION_BLACK);
+              return currentStyle;
+          };
+          const ctx = canvas.getContext('2d');
+          canvas.width = Math.ceil(layout.width);
+          canvas.height = ROW_TOTAL_HEIGHT + (layout.bpmList ? 90 : 0);
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          
+          if (showTrack) {
+              if (gogoActive) {
+                  if (layout.segments && layout.segments.length) {
+                      for (const seg of layout.segments) {
+                          ctx.fillStyle = getGogoBgColor(layout.branchType || 'COMMON', seg.gogo);
+                          ctx.fillRect(seg.startX, 0, seg.endX - seg.startX, FIXED_HEIGHT);
+                      }
+                  } else {
+                      ctx.fillStyle = getGogoBgColor(layout.branchType || 'COMMON', false);
+                      ctx.fillRect(0, 0, canvas.width, FIXED_HEIGHT);
+                  }
+              } else {
+                  ctx.fillStyle = getGogoBgColor(layout.branchType || 'COMMON', false);
+                  ctx.fillRect(0, 0, canvas.width, FIXED_HEIGHT);
+              }
+              
+              // 绘制 <> 背景染色
+              if (layout.colorSegments) {
+                  for (const seg of layout.colorSegments) {
+                      ctx.fillStyle = seg.color;
+                      ctx.fillRect(seg.startX, 0, seg.endX - seg.startX, FIXED_HEIGHT);
+                  }
+              }
+              ctx.fillStyle = '#000000';
+              ctx.fillRect(0, FIXED_HEIGHT, canvas.width, DECORATION_BLACK);
 
-          // 根据 scroll 分段绘制灰色条
-          const grayY = FIXED_HEIGHT + DECORATION_BLACK;
-          if (layout.scrollSegments && !visualFocusActive) {
-              // 根据分段绘制不同颜色的灰色条
-              for (const seg of layout.scrollSegments) {
-                  ctx.fillStyle = seg.isNotOne ? '#aaaaaa' : '#818181';
-                  ctx.fillRect(seg.startX, grayY, seg.endX - seg.startX, DECORATION_GRAY);
+              // 根据 scroll 分段绘制灰色条
+              const grayY = FIXED_HEIGHT + DECORATION_BLACK;
+              if (layout.scrollSegments && !visualFocusActive) {
+                  for (const seg of layout.scrollSegments) {
+                      ctx.fillStyle = seg.isNotOne ? '#aaaaaa' : '#818181';
+                      ctx.fillRect(seg.startX, grayY, seg.endX - seg.startX, DECORATION_GRAY);
+                  }
+              } else {
+                  ctx.fillStyle = '#818181';
+                  ctx.fillRect(0, grayY, canvas.width, DECORATION_GRAY);
               }
-          } else {
-              // 无分段或注重目视开启时，保持默认深灰色
-              ctx.fillStyle = '#818181';
-              ctx.fillRect(0, grayY, canvas.width, DECORATION_GRAY);
-          }
-          // 绘制标注文字
-          const annotateFont = '30px "FZYuan", sans-serif';
-          ctx.save();
-          ctx.font = annotateFont;
-          ctx.fillStyle = '#FFFFFF';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          const annotateY = FIXED_HEIGHT + DECORATION_BLACK + DECORATION_GRAY / 2;
-          for (let i = 0; i < layout.elements.length; i++) {
-            const el = layout.elements[i];
-            if (el.annotation) {
-              const cx = layout.positions[i] + IMG_SMALL / 2 - layout.minX;
-              ctx.fillText(el.annotation, cx, annotateY);
-            }
-          }
-          // 绘制大小标注（气球、彩球、计时弹）
-          const sizeFont = 'bold 30px "FZYuan", sans-serif';
-          ctx.save();
-          ctx.font = sizeFont;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          for (let i = 0; i < layout.elements.length; i++) {
-            const el = layout.elements[i];
-            if (el.balloonSize !== undefined) {
-              const cx = getElementCenter(el, layout.positions[i]) - layout.minX;
-              const cy = 97.5 - 70;   // 音符中心偏上70像素
-              // 黑色描边提高可读性
-              ctx.strokeStyle = '#000000';
-              ctx.lineWidth = 3;
-              ctx.strokeText(String(el.balloonSize), cx, cy);
-              ctx.fillStyle = '#ffffff';
-              ctx.fillText(String(el.balloonSize), cx, cy);
-            }
-          }
-          ctx.restore();
-        }
-        if (!hideBars) {
-          for (let i = 0; i < layout.elements.length; i++) {
-            const el = layout.elements[i];
-            if (!el.hasBar) continue;
-            const cx = layout.positions[i] + IMG_SMALL / 2 - layout.minX;
-            if (barImage.complete && barImage.naturalWidth > 0) {
-              const bw = barImage.naturalWidth || 5,
-                bh = barImage.naturalHeight || 200;
-              ctx.drawImage(barImage, cx - bw / 2, 97.5 - bh / 2, bw, bh);
-            }
-          }
-        }
-        let isTransparent = false;
-        const { sliders = [], balloons = [] } = layout.sliderData || buildRowSliders(layout.elements);
-        const ignoredIndices = new Set();
-        for (const pair of [...sliders, ...balloons]) {
-          if (pair.headIdx === -1 || pair.tailIdx === -1) continue;
-          for (let i = pair.headIdx + 1; i < pair.tailIdx; i++) ignoredIndices.add(i);
-        }
-        const items = [];
-        for (let i = 0; i < layout.elements.length; i++) {
-          const el = layout.elements[i];
-          if (el.type === 'space' || el.sliderRole === 'tail') continue;
-          if (ignoredIndices.has(i)) continue;
-          if (el.type === 'sliderBody' || el.type === 'bigSliderBody' || el.type === 'balloonBody') continue;
-          let dt = el.type;
-          if (dt !== 'bomb' && dt !== 'oxnote' && dt !== 'invisible' && dt !== 'timer' && dt !== 'colorballoon' && dt !== 'sweetPotato' && dt !== 'bell' && dt !== 'rattle' && dt !== 'hugeO' && dt !== 'hugeX' && dt !== 'ninjaO' && dt !== 'ninjaX' && dt !== 'ninjaBigO' && dt !== 'ninjaBigX' && dt !== 'ninjaBalloon' && dt !== 'ninjaDrumroll') {
-              if (randomRow && randomRow[i]) dt = invertType(dt, true);
-              dt = invertType(dt, doInvert);
-              if (doSmallify && dt !== 'c') dt = smallifyType(dt);
-              if (doSmallify && dt === 'colorballoon') dt = 'c';
-          }
-          const actualStyle = getActualStyle(el, currentStyle);
-          const S = styleImages[actualStyle];
-          let size, ox, img;
-          if (dt === 'bomb') {
-              size = IMG_BOMB;
-              ox = -(IMG_BOMB - IMG_SMALL) / 2;
-              img = S.bomb;
-          } else if (dt === 'sweetPotato') {
-              size = IMG_SWEET_POTATO_W;
-              ox = -29;
-              img = S.p;
-          } else if (dt === 'oxnote') {
-              size = IMG_BIG;
-              ox = -(IMG_BIG - IMG_SMALL) / 2;
-              img = S.ox;
-          } else if (dt === 'invisible') {
-              size = IMG_SMALL;
-              ox = 0;
-              img = S.a;
-          } else if (dt === 'timer') {
-              size = IMG_SMALL;
-              ox = 0;
-              img = S.t1;   // 仅使用 t1，t2/t3 暂未启用
-          } else if (dt === 'colorballoon') {
-              size = IMG_BIG;
-              ox = -(IMG_BIG - IMG_SMALL) / 2;
-              img = S.cc;
-          } else if (dt === 'bell') {
-              ox = -IMG_BELL.w / 2 + IMG_SMALL / 2;  // 使中心在 pos
-              img = S.s;
-              // 需要特殊处理绘制时的宽高与 y 偏移
-          } else if (dt === 'rattle') {
-              size = IMG_RATTLE.w;      // 尺寸会单独设置宽高，此处占位
-              ox = IMG_SMALL / 2 - IMG_RATTLE.w / 2;
-              img = S.r;
-          } else if (dt === 'ninjaO') {
-              size = IMG_NINJA_O.w;
-              ox = IMG_SMALL / 2 - IMG_NINJA_O.w / 2;
-              img = S.y;
-          } else if (dt === 'ninjaX') {
-              size = IMG_NINJA_X.w;
-              ox = IMG_SMALL / 2 - IMG_NINJA_X.w / 2;
-              img = S.u;
-          } else if (dt === 'ninjaBigO') {
-              size = IMG_NINJA_BIG_O.w;
-              ox = IMG_SMALL / 2 - IMG_NINJA_BIG_O.w / 2;
-              img = S.yy;
-          } else if (dt === 'ninjaBigX') {
-              size = IMG_NINJA_BIG_X.w;
-              ox = IMG_SMALL / 2 - IMG_NINJA_BIG_X.w / 2;
-              img = S.uu;
-          } else if (dt === 'ninjaBalloon') {
-              size = IMG_NINJA_BALLOON.w;
-              ox = IMG_SMALL / 2 - IMG_NINJA_BALLOON.w / 2;
-              img = S.i;
-          } else if (dt === 'ninjaDrumroll') {
-              size = IMG_NINJA_DRUMROLL.w;
-              ox = IMG_SMALL / 2 - IMG_NINJA_DRUMROLL.w / 2;
-              img = S.ii;
-          } else if (dt === 'hugeO') {
-              ox = -(IMG_HUGE - IMG_SMALL) / 2;
-              img = S.oo;
-          } else if (dt === 'hugeX') {
-              ox = -(IMG_HUGE - IMG_SMALL) / 2;
-              img = S.xx;
-          } else {
-              const isBig = dt === 'O' || dt === 'X';
-              size = dt === 'c' ? IMG_BALLOON_W : (isBig ? IMG_BIG : IMG_SMALL);
-              ox = dt === 'c' ? -0.5 : (isBig ? -(IMG_BIG - IMG_SMALL) / 2 : 0);
-              img = dt === 'c' ? S.c1 : { o: S.o, x: S.x, O: S.oo, X: S.xx }[dt];
-          }
-          const x = layout.positions[i] + ox;
-          items.push({
-            order: i,
-            draw: () => {
+              
+              // 绘制标注文字
+              const annotateFont = '30px "FZYuan", sans-serif';
               ctx.save();
-              ctx.translate(-layout.minX, 0);
-              if (el.highlight) {
-                ctx.shadowColor = 'white';
-                ctx.shadowBlur = 20;
+              ctx.font = annotateFont;
+              ctx.fillStyle = '#FFFFFF';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              const annotateY = FIXED_HEIGHT + DECORATION_BLACK + DECORATION_GRAY / 2;
+              for (let i = 0; i < layout.elements.length; i++) {
+                  const el = layout.elements[i];
+                  if (el.annotation) {
+                      const cx = layout.positions[i] + IMG_SMALL / 2 - layout.minX;
+                      ctx.fillText(el.annotation, cx, annotateY);
+                  }
               }
-              if (el.transparent) {
-                ctx.globalAlpha = 0.5;
-              }
-              if (img && img.complete) {
-                  if (dt === 'c') {
-                      ctx.drawImage(img, x, 97.5 - IMG_BALLOON_H / 2, size, IMG_BALLOON_H);
-                  } else if (dt === 'bell') {
-                      ctx.drawImage(img, x, 97.5 - (IMG_BELL.h - IMG_BELL.centerFromBottom), IMG_BELL.w, IMG_BELL.h);
-                  } else if (dt === 'rattle') {
-                      ctx.drawImage(img, x, 97.5 - IMG_RATTLE.centerFromTop, IMG_RATTLE.w, IMG_RATTLE.h);
-                  } else if (dt === 'hugeO' || dt === 'hugeX') {
-                      ctx.drawImage(img, x, 97.5 - IMG_HUGE / 2, IMG_HUGE, IMG_HUGE);
-                  } else if (dt === 'sweetPotato') {
-                      ctx.drawImage(img, x, 97.5 - IMG_SWEET_POTATO_H / 2, size, IMG_SWEET_POTATO_H);
-                  } else if (dt === 'rattle') {
-                      ctx.drawImage(img, x, 97.5 - IMG_RATTLE.centerFromTop, IMG_RATTLE.w, IMG_RATTLE.h);
+              
+              // 绘制大小标注
+              const sizeFont = 'bold 30px "FZYuan", sans-serif';
+              ctx.save();
+              ctx.font = sizeFont;
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              for (let i = 0; i < layout.elements.length; i++) {
+                  const el = layout.elements[i];
+                  if (el.balloonSize !== undefined) {
+                      const cx = getElementCenter(el, layout.positions[i]) - layout.minX;
+                      const cy = 97.5 - 70;
+                      ctx.strokeStyle = '#000000';
+                      ctx.lineWidth = 3;
+                      ctx.strokeText(String(el.balloonSize), cx, cy);
+                      ctx.fillStyle = '#ffffff';
+                      ctx.fillText(String(el.balloonSize), cx, cy);
                   }
-                  else if (dt === 'ninjaO') {
-                      ctx.drawImage(img, x, 97.5 - IMG_NINJA_O.h / 2, IMG_NINJA_O.w, IMG_NINJA_O.h);
-                  }
-                  else if (dt === 'ninjaX') {
-                      ctx.drawImage(img, x, 97.5 - IMG_NINJA_X.h / 2, IMG_NINJA_X.w, IMG_NINJA_X.h);
-                  }
-                  else if (dt === 'ninjaBigO') {
-                      ctx.drawImage(img, x, 97.5 - IMG_NINJA_BIG_O.h / 2, IMG_NINJA_BIG_O.w, IMG_NINJA_BIG_O.h);
-                  }
-                  else if (dt === 'ninjaBigX') {
-                      ctx.drawImage(img, x, 97.5 - IMG_NINJA_BIG_X.h / 2, IMG_NINJA_BIG_X.w, IMG_NINJA_BIG_X.h);
-                  }
-                  else if (dt === 'ninjaBalloon') {
-                      ctx.drawImage(img, x, 97.5 - IMG_NINJA_BALLOON.h / 2, IMG_NINJA_BALLOON.w, IMG_NINJA_BALLOON.h);
-                  }
-                  else if (dt === 'ninjaDrumroll') {
-                      ctx.drawImage(img, x, 97.5 - IMG_NINJA_DRUMROLL.h / 2, IMG_NINJA_DRUMROLL.w, IMG_NINJA_DRUMROLL.h);
-                  }else {
-                      ctx.drawImage(img, x, 97.5 - size / 2, size, size);
-                  } 
-              }
-              if (el.highlight) {
-                ctx.shadowColor = 'transparent';
-                ctx.shadowBlur = 0;
               }
               ctx.restore();
-            }
-          });
-        }
-        const bpm = layout.bpm;
-        const startBarX = layout.startBarCanvasX ?? 0;
-        const endBarX = layout.endBarCanvasX ?? layout.width;
-        for (const s of sliders) {
-          let isBig = s.isBig;
-          if (doSmallify) isBig = false;
-          const hSize = isBig ? IMG_BIG : IMG_SMALL,
-            midH = isBig ? 160 : 106,
-            tSize = isBig ? IMG_BIG : IMG_SMALL;
-          const headEl = (s.headIdx !== -1) ? layout.elements[s.headIdx] : (s.tailIdx !== -1 ? layout.elements[s.tailIdx] : null);
-          const tailEl = (s.tailIdx !== -1) ? layout.elements[s.tailIdx] : null;
-          isTransparent = headEl?.transparent ?? false;
-          const gogoVal = headEl ? headEl.gogo : false;
-          const actualStyle = getActualStyle({ gogo: gogoVal }, currentStyle);
-          const S = styleImages[actualStyle];
-          let hImg, mImg, tImg;
-          if (headEl?.sliderType === 'timer') {
-              hImg = S.t1;
-              mImg = S.t2;
-              tImg = S.t3;
-          } else {
-              hImg = isBig ? S.ll1 : S.l1;
-              mImg = isBig ? S.ll2 : S.l2;
-              tImg = isBig ? S.ll3 : S.l3;
+              ctx.globalAlpha = 1;
           }
-          const headOnly = s.headIdx !== -1 && s.tailIdx === -1;
-          const tailOnly = s.headIdx === -1 && s.tailIdx !== -1;
-          if (headOnly) {
-            const headX = layout.positions[s.headIdx] + IMG_SMALL / 2;
-            const headCanvasX = headX - layout.minX;
-            const bodyWidth = endBarX - headCanvasX;
-            items.push({
-              order: s.headIdx,
-              draw: () => {
-                if (isTransparent) ctx.globalAlpha = 0.5;
-                ctx.save();
-                ctx.translate(-layout.minX, 0);
-                if (tjaModeActive) {
-                  // TJA 模式：跨行长条上半部分，绘制身体
-                  ctx.drawImage(mImg, headX, 97.5 - midH / 2, bodyWidth, midH);
-                }
-                // 绘制头部（两种模式都绘制）
-                ctx.drawImage(hImg, headX - hSize / 2, 97.5 - hSize / 2, hSize, hSize);
-                ctx.restore();
+          
+          if (!hideBars) {
+              for (let i = 0; i < layout.elements.length; i++) {
+                  const el = layout.elements[i];
+                  if (!el.hasBar) continue;
+                  const cx = layout.positions[i] + IMG_SMALL / 2 - layout.minX;
+                  if (barImage.complete && barImage.naturalWidth > 0) {
+                      const bw = barImage.naturalWidth || 5;
+                      const bh = barImage.naturalHeight || 200;
+                      ctx.drawImage(barImage, cx - bw / 2, 97.5 - bh / 2, bw, bh);
+                  }
               }
-            });
-            continue;
           }
-          if (tailOnly) {
-            const tailX = layout.positions[s.tailIdx] + IMG_SMALL / 2;
-            const tailCanvasX = tailX - layout.minX;
-            const bodyWidth = tailCanvasX - startBarX;
-            const bodyStartOriginal = startBarX + layout.minX;
-            items.push({
-              order: s.tailIdx,
-              draw: () => {
-                if (isTransparent) ctx.globalAlpha = 0.5;
-                ctx.save();
-                ctx.translate(-layout.minX, 0);
-                ctx.drawImage(mImg, bodyStartOriginal, 97.5 - midH / 2, bodyWidth, midH);
-                ctx.drawImage(tImg, tailX - tSize / 2, 97.5 - tSize / 2, tSize, tSize);
-                ctx.restore();
-              }
-            });
-            continue;
+          
+          const { sliders = [], balloons = [] } = layout.sliderData || buildRowSliders(layout.elements);
+          const ignoredIndices = new Set();
+          for (const pair of [...sliders, ...balloons]) {
+              if (pair.headIdx === -1 || pair.tailIdx === -1) continue;
+              for (let i = pair.headIdx + 1; i < pair.tailIdx; i++) ignoredIndices.add(i);
           }
-          if (s.headIdx !== -1 && s.tailIdx !== -1) {
-            const headX = layout.positions[s.headIdx] + IMG_SMALL / 2,
-              tailX = layout.positions[s.tailIdx] + IMG_SMALL / 2;
-            items.push({
-              order: s.headIdx,
-              draw: () => {
-                if (isTransparent) ctx.globalAlpha = 0.5;
-                ctx.save();
-                ctx.translate(-layout.minX, 0);
-                ctx.drawImage(hImg, headX - hSize / 2, 97.5 - hSize / 2, hSize, hSize);
-                ctx.restore();
+          
+          const items = [];
+          
+          // 绘制普通音符
+          for (let i = 0; i < layout.elements.length; i++) {
+              const el = layout.elements[i];
+              if (el.type === 'space' || el.sliderRole === 'tail') continue;
+              if (ignoredIndices.has(i)) continue;
+              if (el.type === 'sliderBody' || el.type === 'bigSliderBody' || el.type === 'balloonBody') continue;
+              
+              let dt = el.type;
+              if (dt !== 'bomb' && dt !== 'oxnote' && dt !== 'invisible' && dt !== 'timer' && dt !== 'colorballoon' && dt !== 'sweetPotato' && dt !== 'bell' && dt !== 'rattle' && dt !== 'hugeO' && dt !== 'hugeX' && dt !== 'ninjaO' && dt !== 'ninjaX' && dt !== 'ninjaBigO' && dt !== 'ninjaBigX' && dt !== 'ninjaBalloon' && dt !== 'ninjaDrumroll') {
+                  if (randomRow && randomRow[i]) dt = invertType(dt, true);
+                  dt = invertType(dt, doInvert);
+                  if (doSmallify && dt !== 'c') dt = smallifyType(dt);
+                  if (doSmallify && dt === 'colorballoon') dt = 'c';
               }
-            });
-            items.push({
-              order: s.headIdx + 1,
-              draw: () => {
-                if (isTransparent) ctx.globalAlpha = 0.5;
-                ctx.save();
-                ctx.translate(-layout.minX, 0);
-                ctx.drawImage(mImg, headX, 97.5 - midH / 2, tailX - headX, midH);
-                ctx.restore();
+              
+              const actualStyle = getActualStyle(el, currentStyle);
+              const S = styleImages[actualStyle];
+              let size, ox, img;
+              
+              if (dt === 'bomb') {
+                  size = IMG_BOMB;
+                  ox = -(IMG_BOMB - IMG_SMALL) / 2;
+                  img = S.bomb;
+              } else if (dt === 'sweetPotato') {
+                  size = IMG_SWEET_POTATO_W;
+                  ox = -29;
+                  img = S.p;
+              } else if (dt === 'oxnote') {
+                  size = IMG_BIG;
+                  ox = -(IMG_BIG - IMG_SMALL) / 2;
+                  img = S.ox;
+              } else if (dt === 'invisible') {
+                  size = IMG_SMALL;
+                  ox = 0;
+                  img = S.a;
+              } else if (dt === 'timer') {
+                  size = IMG_SMALL;
+                  ox = 0;
+                  img = S.t1;
+              } else if (dt === 'colorballoon') {
+                  size = IMG_BIG;
+                  ox = -(IMG_BIG - IMG_SMALL) / 2;
+                  img = S.cc;
+              } else if (dt === 'bell') {
+                  ox = -IMG_BELL.w / 2 + IMG_SMALL / 2;
+                  img = S.s;
+              } else if (dt === 'rattle') {
+                  size = IMG_RATTLE.w;
+                  ox = IMG_SMALL / 2 - IMG_RATTLE.w / 2;
+                  img = S.r;
+              } else if (dt === 'ninjaO') {
+                  size = IMG_NINJA_O.w;
+                  ox = IMG_SMALL / 2 - IMG_NINJA_O.w / 2;
+                  img = S.y;
+              } else if (dt === 'ninjaX') {
+                  size = IMG_NINJA_X.w;
+                  ox = IMG_SMALL / 2 - IMG_NINJA_X.w / 2;
+                  img = S.u;
+              } else if (dt === 'ninjaBigO') {
+                  size = IMG_NINJA_BIG_O.w;
+                  ox = IMG_SMALL / 2 - IMG_NINJA_BIG_O.w / 2;
+                  img = S.yy;
+              } else if (dt === 'ninjaBigX') {
+                  size = IMG_NINJA_BIG_X.w;
+                  ox = IMG_SMALL / 2 - IMG_NINJA_BIG_X.w / 2;
+                  img = S.uu;
+              } else if (dt === 'ninjaBalloon') {
+                  size = IMG_NINJA_BALLOON.w;
+                  ox = IMG_SMALL / 2 - IMG_NINJA_BALLOON.w / 2;
+                  img = S.i;
+              } else if (dt === 'ninjaDrumroll') {
+                  size = IMG_NINJA_DRUMROLL.w;
+                  ox = IMG_SMALL / 2 - IMG_NINJA_DRUMROLL.w / 2;
+                  img = S.ii;
+              } else if (dt === 'hugeO') {
+                  ox = -(IMG_HUGE - IMG_SMALL) / 2;
+                  img = S.oo;
+              } else if (dt === 'hugeX') {
+                  ox = -(IMG_HUGE - IMG_SMALL) / 2;
+                  img = S.xx;
+              } else {
+                  const isBig = dt === 'O' || dt === 'X';
+                  size = dt === 'c' ? IMG_BALLOON_W : (isBig ? IMG_BIG : IMG_SMALL);
+                  ox = dt === 'c' ? -0.5 : (isBig ? -(IMG_BIG - IMG_SMALL) / 2 : 0);
+                  img = dt === 'c' ? S.c1 : { o: S.o, x: S.x, O: S.oo, X: S.xx }[dt];
               }
-            });
-            items.push({
-              order: s.tailIdx,
-              draw: () => {
-                if (isTransparent) ctx.globalAlpha = 0.5;
-                ctx.save();
-                ctx.translate(-layout.minX, 0);
-                ctx.drawImage(tImg, tailX - tSize / 2, 97.5 - tSize / 2, tSize, tSize);
-                ctx.restore();
-              }
-            });
-          }
-        }
-        if (layout.crossSliders) {
-          for (const cs of layout.crossSliders) {
-            const actualStyle = getActualStyle({ gogo: cs.gogo }, currentStyle);
-            const S = styleImages[actualStyle];
-
-            if (cs.isBalloon) {
-              if (cs.type === "middle") items.push({
-                order: -9999,
-                draw: () => {
-                  if (isTransparent) ctx.globalAlpha = 0.5;
-                  ctx.save();
-                  ctx.translate(-layout.minX, 0);
-                  ctx.globalAlpha = 0.7;
-                  ctx.drawImage(S.c2, startBarX + layout.minX, 73.5, endBarX - startBarX, 48);
-                  ctx.globalAlpha = 1;
-                  ctx.restore();
-                }
-              });
-              continue;
-            }
-            if (cs.type !== 'middle') continue;
-            const mImg = cs.isBig ? S.ll2 : S.l2,
-              midH = cs.isBig ? 160 : 106;
-            items.push({
-              order: -9999,
-              draw: () => {
-                if (isTransparent) ctx.globalAlpha = 0.5;
-                ctx.save();
-                ctx.translate(-layout.minX, 0);
-                ctx.drawImage(mImg, startBarX + layout.minX, 97.5 - midH / 2, endBarX - startBarX, midH);
-                ctx.restore();
-              }
-            });
-          }
-        }
-        if (balloonTail) {
-          for (const b of balloons) {
-            const headOnly = b.headIdx !== -1 && b.tailIdx === -1;
-            const tailOnly = b.headIdx === -1 && b.tailIdx !== -1;
-            const complete = b.headIdx !== -1 && b.tailIdx !== -1;
-            const headEl = (b.headIdx !== -1) ? layout.elements[b.headIdx] : null;
-            isTransparent = headEl?.transparent;
-            const gogoVal = headEl ? headEl.gogo : false;
-            const actualStyle = getActualStyle({ gogo: gogoVal }, currentStyle);
-            const c2 = styleImages[actualStyle].c2;
-            const c3 = styleImages[actualStyle].c3;
-
-            if (headOnly) {
-              const headX = layout.positions[b.headIdx] + IMG_SMALL / 2;
-              const headCanvasX = headX - layout.minX;
-              const bodyWidth = endBarX - headCanvasX;
+              
+              const x = layout.positions[i] + ox;
+              const currentTransparent = el.transparent || false;
+              
               items.push({
-                order: b.headIdx + 1,
-                draw: () => {
-                  if (isTransparent) ctx.globalAlpha = 0.5;
-                  ctx.save();
-                  ctx.translate(-layout.minX, 0);
-                  ctx.globalAlpha = 0.7;
-                  ctx.drawImage(c2, headX, 73.5, bodyWidth, 48);
-                  ctx.globalAlpha = 1;
-                  ctx.restore();
-                }
+                  order: i,
+                  draw: () => {
+                      ctx.save();
+                      ctx.translate(-layout.minX, 0);
+                      if (el.highlight) {
+                          ctx.shadowColor = 'white';
+                          ctx.shadowBlur = 20;
+                      }
+                      if (currentTransparent) {
+                          ctx.globalAlpha = 0.5;
+                      }
+                      if (img && img.complete) {
+                          if (dt === 'c') {
+                              ctx.drawImage(img, x, 97.5 - IMG_BALLOON_H / 2, size, IMG_BALLOON_H);
+                          } else if (dt === 'bell') {
+                              ctx.drawImage(img, x, 97.5 - (IMG_BELL.h - IMG_BELL.centerFromBottom), IMG_BELL.w, IMG_BELL.h);
+                          } else if (dt === 'rattle') {
+                              ctx.drawImage(img, x, 97.5 - IMG_RATTLE.centerFromTop, IMG_RATTLE.w, IMG_RATTLE.h);
+                          } else if (dt === 'hugeO' || dt === 'hugeX') {
+                              ctx.drawImage(img, x, 97.5 - IMG_HUGE / 2, IMG_HUGE, IMG_HUGE);
+                          } else if (dt === 'sweetPotato') {
+                              ctx.drawImage(img, x, 97.5 - IMG_SWEET_POTATO_H / 2, size, IMG_SWEET_POTATO_H);
+                          } else if (dt === 'ninjaO') {
+                              ctx.drawImage(img, x, 97.5 - IMG_NINJA_O.h / 2, IMG_NINJA_O.w, IMG_NINJA_O.h);
+                          } else if (dt === 'ninjaX') {
+                              ctx.drawImage(img, x, 97.5 - IMG_NINJA_X.h / 2, IMG_NINJA_X.w, IMG_NINJA_X.h);
+                          } else if (dt === 'ninjaBigO') {
+                              ctx.drawImage(img, x, 97.5 - IMG_NINJA_BIG_O.h / 2, IMG_NINJA_BIG_O.w, IMG_NINJA_BIG_O.h);
+                          } else if (dt === 'ninjaBigX') {
+                              ctx.drawImage(img, x, 97.5 - IMG_NINJA_BIG_X.h / 2, IMG_NINJA_BIG_X.w, IMG_NINJA_BIG_X.h);
+                          } else if (dt === 'ninjaBalloon') {
+                              ctx.drawImage(img, x, 97.5 - IMG_NINJA_BALLOON.h / 2, IMG_NINJA_BALLOON.w, IMG_NINJA_BALLOON.h);
+                          } else if (dt === 'ninjaDrumroll') {
+                              ctx.drawImage(img, x, 97.5 - IMG_NINJA_DRUMROLL.h / 2, IMG_NINJA_DRUMROLL.w, IMG_NINJA_DRUMROLL.h);
+                          } else {
+                              ctx.drawImage(img, x, 97.5 - size / 2, size, size);
+                          }
+                      }
+                      if (el.highlight) {
+                          ctx.shadowColor = 'transparent';
+                          ctx.shadowBlur = 0;
+                      }
+                      ctx.restore();
+                      ctx.globalAlpha = 1;
+                  }
               });
-              continue;
-            }
-
-            if (tailOnly) {
-              const tailX = layout.positions[b.tailIdx] + IMG_SMALL / 2;
-              const tailCanvasX = tailX - layout.minX;
-              const bodyWidth = tailCanvasX - startBarX;
-              const bodyStartOriginal = startBarX + layout.minX;
-              items.push({
-                order: b.tailIdx,
-                draw: () => {
-                  if (isTransparent) ctx.globalAlpha = 0.5;
-                  ctx.save();
-                  ctx.translate(-layout.minX, 0);
-                  ctx.globalAlpha = 0.7;
-                  ctx.drawImage(c2, bodyStartOriginal, 73.5, bodyWidth, 48);
-                  ctx.drawImage(c3, tailX - 24, 73.5, 48, 48);
-                  ctx.globalAlpha = 1;
-                  ctx.restore();
-                }
-              });
-              continue;
-            }
-
-            if (complete) {
-              const headX = layout.positions[b.headIdx] + IMG_SMALL / 2;
-              const tailX = layout.positions[b.tailIdx] + IMG_SMALL / 2;
-              items.push({
-                order: b.headIdx + 0.5,
-                draw: () => {
-                  if (isTransparent) ctx.globalAlpha = 0.5;
-                  ctx.save();
-                  ctx.translate(-layout.minX, 0);
-                  ctx.globalAlpha = 0.7;
-                  ctx.drawImage(c2, headX, 73.5, tailX - headX, 48);
-                  ctx.globalAlpha = 1;
-                  ctx.restore();
-                }
-              });
-              items.push({
-                order: b.tailIdx,
-                draw: () => {
-                  if (isTransparent) ctx.globalAlpha = 0.5;
-                  ctx.save();
-                  ctx.translate(-layout.minX, 0);
-                  ctx.globalAlpha = 0.7;
-                  ctx.drawImage(c3, tailX - 24, 73.5, 48, 48);
-                  ctx.globalAlpha = 1;
-                  ctx.restore();
-                }
-              });
-            }
           }
-        }
-        if (layout.bpmList) {
-          const lineTop = FIXED_HEIGHT + DECORATION_BLACK;
-          const lineHeight = 90;
-          const textY = ROW_TOTAL_HEIGHT;
-          layout.bpmList.forEach((bpm) => {
-            const bpmX = bpm.x;
-            if (barImage.complete && barImage.naturalWidth > 0) {
-              const bw = barImage.naturalWidth;
-              ctx.drawImage(barImage, bpmX - bw / 2, lineTop, bw, lineHeight);
-            }
-            ctx.save();
-            ctx.font = 'bold 36px "FZYuan", sans-serif';
-            ctx.textAlign = 'left';
-            ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 3;
-            ctx.textBaseline = 'top';
-            const bpmText = bpm.value.toFixed(2);
-            ctx.strokeText(bpmText, bpmX + 4, textY);
-            ctx.fillStyle = '#ffffff';
-            ctx.fillText(bpmText, bpmX + 4, textY);
-            ctx.restore();
-          });
-        }
-        if (layout.scrollList) {
-            const lineTop = FIXED_HEIGHT + DECORATION_BLACK;
-            const lineBottom = FIXED_HEIGHT + DECORATION_BLACK + DECORATION_GRAY;
-            const textY = lineTop + (DECORATION_GRAY / 2);
-
-            layout.scrollList.forEach((sc) => {
-                const x = sc.x;
-                const scrollVal = sc.value;
-
-                ctx.beginPath();
-                ctx.strokeStyle = '#ffffff';
-                ctx.lineWidth = 2;
-                ctx.moveTo(x, lineTop);
-                ctx.lineTo(x, lineBottom);
-                ctx.stroke();
-
-                if (Math.abs(scrollVal - 1) > 0.001) {
-                    if (Math.abs(scrollVal - 1) > 0.001) {
+          
+          const startBarX = layout.startBarCanvasX ?? 0;
+          const endBarX = layout.endBarCanvasX ?? layout.width;
+          
+          // 绘制长条
+          for (const s of sliders) {
+              let isBig = s.isBig;
+              if (doSmallify) isBig = false;
+              const hSize = isBig ? IMG_BIG : IMG_SMALL;
+              const midH = isBig ? 160 : 106;
+              const tSize = isBig ? IMG_BIG : IMG_SMALL;
+              const headEl = (s.headIdx !== -1) ? layout.elements[s.headIdx] : (s.tailIdx !== -1 ? layout.elements[s.tailIdx] : null);
+              const tailEl = (s.tailIdx !== -1) ? layout.elements[s.tailIdx] : null;
+              const currentTransparent = headEl?.transparent ?? false;
+              const gogoVal = headEl ? headEl.gogo : false;
+              const actualStyle = getActualStyle({ gogo: gogoVal }, currentStyle);
+              const S = styleImages[actualStyle];
+              let hImg, mImg, tImg;
+              
+              if (headEl?.sliderType === 'timer') {
+                  hImg = S.t1;
+                  mImg = S.t2;
+                  tImg = S.t3;
+              } else {
+                  hImg = isBig ? S.ll1 : S.l1;
+                  mImg = isBig ? S.ll2 : S.l2;
+                  tImg = isBig ? S.ll3 : S.l3;
+              }
+              
+              const headOnly = s.headIdx !== -1 && s.tailIdx === -1;
+              const tailOnly = s.headIdx === -1 && s.tailIdx !== -1;
+              
+              if (headOnly) {
+                  const headX = layout.positions[s.headIdx] + IMG_SMALL / 2;
+                  const headCanvasX = headX - layout.minX;
+                  const bodyWidth = endBarX - headCanvasX;
+                  items.push({
+                      order: s.headIdx,
+                      draw: () => {
+                          if (currentTransparent) ctx.globalAlpha = 0.5;
+                          ctx.save();
+                          ctx.translate(-layout.minX, 0);
+                          if (tjaModeActive) {
+                              ctx.drawImage(mImg, headX, 97.5 - midH / 2, bodyWidth, midH);
+                          }
+                          ctx.drawImage(hImg, headX - hSize / 2, 97.5 - hSize / 2, hSize, hSize);
+                          ctx.restore();
+                          ctx.globalAlpha = 1;
+                      }
+                  });
+                  continue;
+              }
+              
+              if (tailOnly) {
+                  const tailX = layout.positions[s.tailIdx] + IMG_SMALL / 2;
+                  const tailCanvasX = tailX - layout.minX;
+                  const bodyWidth = tailCanvasX - startBarX;
+                  const bodyStartOriginal = startBarX + layout.minX;
+                  items.push({
+                      order: s.tailIdx,
+                      draw: () => {
+                          if (currentTransparent) ctx.globalAlpha = 0.5;
+                          ctx.save();
+                          ctx.translate(-layout.minX, 0);
+                          ctx.drawImage(mImg, bodyStartOriginal, 97.5 - midH / 2, bodyWidth, midH);
+                          ctx.drawImage(tImg, tailX - tSize / 2, 97.5 - tSize / 2, tSize, tSize);
+                          ctx.restore();
+                          ctx.globalAlpha = 1;
+                      }
+                  });
+                  continue;
+              }
+              
+              if (s.headIdx !== -1 && s.tailIdx !== -1) {
+                  const headX = layout.positions[s.headIdx] + IMG_SMALL / 2;
+                  const tailX = layout.positions[s.tailIdx] + IMG_SMALL / 2;
+                  
+                  items.push({
+                      order: s.headIdx,
+                      draw: () => {
+                          if (currentTransparent) ctx.globalAlpha = 0.5;
+                          ctx.save();
+                          ctx.translate(-layout.minX, 0);
+                          ctx.drawImage(hImg, headX - hSize / 2, 97.5 - hSize / 2, hSize, hSize);
+                          ctx.restore();
+                          ctx.globalAlpha = 1;
+                      }
+                  });
+                  items.push({
+                      order: s.headIdx + 1,
+                      draw: () => {
+                          if (currentTransparent) ctx.globalAlpha = 0.5;
+                          ctx.save();
+                          ctx.translate(-layout.minX, 0);
+                          ctx.drawImage(mImg, headX, 97.5 - midH / 2, tailX - headX, midH);
+                          ctx.restore();
+                          ctx.globalAlpha = 1;
+                      }
+                  });
+                  items.push({
+                      order: s.tailIdx,
+                      draw: () => {
+                          if (currentTransparent) ctx.globalAlpha = 0.5;
+                          ctx.save();
+                          ctx.translate(-layout.minX, 0);
+                          ctx.drawImage(tImg, tailX - tSize / 2, 97.5 - tSize / 2, tSize, tSize);
+                          ctx.restore();
+                          ctx.globalAlpha = 1;
+                      }
+                  });
+              }
+          }
+          
+          // 绘制跨行长条
+          if (layout.crossSliders) {
+              for (const cs of layout.crossSliders) {
+                  const actualStyle = getActualStyle({ gogo: cs.gogo }, currentStyle);
+                  const S = styleImages[actualStyle];
+                  
+                  if (cs.isBalloon) {
+                      if (cs.type === "middle") items.push({
+                          order: -9999,
+                          draw: () => {
+                              ctx.save();
+                              ctx.translate(-layout.minX, 0);
+                              ctx.globalAlpha = 0.7;
+                              ctx.drawImage(S.c2, startBarX + layout.minX, 73.5, endBarX - startBarX, 48);
+                              ctx.globalAlpha = 1;
+                              ctx.restore();
+                          }
+                      });
+                      continue;
+                  }
+                  if (cs.type !== 'middle') continue;
+                  const mImg = cs.isBig ? S.ll2 : S.l2;
+                  const midH = cs.isBig ? 160 : 106;
+                  items.push({
+                      order: -9999,
+                      draw: () => {
+                          ctx.save();
+                          ctx.translate(-layout.minX, 0);
+                          ctx.drawImage(mImg, startBarX + layout.minX, 97.5 - midH / 2, endBarX - startBarX, midH);
+                          ctx.restore();
+                          ctx.globalAlpha = 1;
+                      }
+                  });
+              }
+          }
+          
+          // 绘制气球尾
+          if (balloonTail) {
+              for (const b of balloons) {
+                  const headOnly = b.headIdx !== -1 && b.tailIdx === -1;
+                  const tailOnly = b.headIdx === -1 && b.tailIdx !== -1;
+                  const complete = b.headIdx !== -1 && b.tailIdx !== -1;
+                  const headEl = (b.headIdx !== -1) ? layout.elements[b.headIdx] : null;
+                  const currentTransparent = headEl?.transparent ?? false;
+                  const gogoVal = headEl ? headEl.gogo : false;
+                  const actualStyle = getActualStyle({ gogo: gogoVal }, currentStyle);
+                  const c2 = styleImages[actualStyle].c2;
+                  const c3 = styleImages[actualStyle].c3;
+                  
+                  if (headOnly) {
+                      const headX = layout.positions[b.headIdx] + IMG_SMALL / 2;
+                      const headCanvasX = headX - layout.minX;
+                      const bodyWidth = endBarX - headCanvasX;
+                      items.push({
+                          order: b.headIdx + 1,
+                          draw: () => {
+                              if (currentTransparent) ctx.globalAlpha = 0.5;
+                              ctx.save();
+                              ctx.translate(-layout.minX, 0);
+                              ctx.globalAlpha = 0.7;
+                              ctx.drawImage(c2, headX, 73.5, bodyWidth, 48);
+                              ctx.globalAlpha = 1;
+                              ctx.restore();
+                          }
+                      });
+                      continue;
+                  }
+                  
+                  if (tailOnly) {
+                      const tailX = layout.positions[b.tailIdx] + IMG_SMALL / 2;
+                      const tailCanvasX = tailX - layout.minX;
+                      const bodyWidth = tailCanvasX - startBarX;
+                      const bodyStartOriginal = startBarX + layout.minX;
+                      items.push({
+                          order: b.tailIdx,
+                          draw: () => {
+                              if (currentTransparent) ctx.globalAlpha = 0.5;
+                              ctx.save();
+                              ctx.translate(-layout.minX, 0);
+                              ctx.globalAlpha = 0.7;
+                              ctx.drawImage(c2, bodyStartOriginal, 73.5, bodyWidth, 48);
+                              ctx.drawImage(c3, tailX - 24, 73.5, 48, 48);
+                              ctx.globalAlpha = 1;
+                              ctx.restore();
+                          }
+                      });
+                      continue;
+                  }
+                  
+                  if (complete) {
+                      const headX = layout.positions[b.headIdx] + IMG_SMALL / 2;
+                      const tailX = layout.positions[b.tailIdx] + IMG_SMALL / 2;
+                      items.push({
+                          order: b.headIdx + 0.5,
+                          draw: () => {
+                              if (currentTransparent) ctx.globalAlpha = 0.5;
+                              ctx.save();
+                              ctx.translate(-layout.minX, 0);
+                              ctx.globalAlpha = 0.7;
+                              ctx.drawImage(c2, headX, 73.5, tailX - headX, 48);
+                              ctx.globalAlpha = 1;
+                              ctx.restore();
+                          }
+                      });
+                      items.push({
+                          order: b.tailIdx,
+                          draw: () => {
+                              if (currentTransparent) ctx.globalAlpha = 0.5;
+                              ctx.save();
+                              ctx.translate(-layout.minX, 0);
+                              ctx.globalAlpha = 0.7;
+                              ctx.drawImage(c3, tailX - 24, 73.5, 48, 48);
+                              ctx.globalAlpha = 1;
+                              ctx.restore();
+                          }
+                      });
+                  }
+              }
+          }
+          
+          // 绘制 BPM 标注
+          if (layout.bpmList) {
+              const lineTop = FIXED_HEIGHT + DECORATION_BLACK;
+              const lineHeight = 90;
+              const textY = ROW_TOTAL_HEIGHT;
+              layout.bpmList.forEach((bpm) => {
+                  const bpmX = bpm.x;
+                  if (barImage.complete && barImage.naturalWidth > 0) {
+                      const bw = barImage.naturalWidth;
+                      ctx.drawImage(barImage, bpmX - bw / 2, lineTop, bw, lineHeight);
+                  }
+                  ctx.save();
+                  ctx.font = 'bold 36px "FZYuan", sans-serif';
+                  ctx.textAlign = 'left';
+                  ctx.strokeStyle = '#000000';
+                  ctx.lineWidth = 3;
+                  ctx.textBaseline = 'top';
+                  const bpmText = bpm.value.toFixed(2);
+                  ctx.strokeText(bpmText, bpmX + 4, textY);
+                  ctx.fillStyle = '#ffffff';
+                  ctx.fillText(bpmText, bpmX + 4, textY);
+                  ctx.restore();
+                  ctx.globalAlpha = 1;
+              });
+          }
+          
+          // 绘制 SCROLL 标注
+          if (layout.scrollList) {
+              const lineTop = FIXED_HEIGHT + DECORATION_BLACK;
+              const lineBottom = FIXED_HEIGHT + DECORATION_BLACK + DECORATION_GRAY;
+              const textY = lineTop + (DECORATION_GRAY / 2);
+              
+              layout.scrollList.forEach((sc) => {
+                  const x = sc.x;
+                  const scrollVal = sc.value;
+                  
+                  ctx.beginPath();
+                  ctx.strokeStyle = '#ffffff';
+                  ctx.lineWidth = 2;
+                  ctx.moveTo(x, lineTop);
+                  ctx.lineTo(x, lineBottom);
+                  ctx.stroke();
+                  
+                  if (Math.abs(scrollVal - 1) > 0.001) {
                       ctx.save();
                       ctx.font = 'italic bold 30px "FZYuan", sans-serif';
                       ctx.textAlign = 'left';
@@ -2689,10 +2833,10 @@
                       const scrollText = scrollVal.toFixed(2);
                       const textMetrics = ctx.measureText(scrollText);
                       const textWidth = textMetrics.width;
-                      const textHeight = 30;                      // 近似字体大小
+                      const textHeight = 30;
                       const paddingX = 8;
                       const paddingY = 4;
-
+                      
                       ctx.fillStyle = '#fed218';
                       ctx.fillRect(
                           x + 4 - paddingX,
@@ -2700,22 +2844,22 @@
                           textWidth + paddingX * 2,
                           textHeight + paddingY * 2
                       );
-
-                      // 绘制文字（描边 + 填充）
+                      
                       ctx.strokeStyle = '#ffffff';
                       ctx.lineWidth = 6;
                       ctx.strokeText(scrollText, x + 4, textY);
                       ctx.fillStyle = '#000000';
                       ctx.fillText(scrollText, x + 4, textY);
-
+                      
                       ctx.restore();
+                      ctx.globalAlpha = 1;
                   }
-                }
-            });
-        }
-
-        items.sort((a, b) => b.order - a.order);
-        for (const item of items) item.draw();
+              });
+          }
+          
+          items.sort((a, b) => b.order - a.order);
+          for (const item of items) item.draw();
+          ctx.globalAlpha = 1;
       }
 
       function buildCanvasCacheKey(layout, doInvert, doSmallify, rowIndex) {
@@ -2841,9 +2985,11 @@ function openImagePreview(canvas) {
           M: rows.filter(r => r.branch === 'M')
         };
       }
-      function parseTJA(text) {
+      function parseTJA(text, options = {}) {
+        const recordMeasures = options.recordMeasures === true;
         const courses = [];
         const lines = text.split(/\r?\n/);
+        let currentMeasureStr = '4/4';
         canvasCache.clear();
         rowMergeCache.clear();
         let curCourse = null,
@@ -2898,6 +3044,7 @@ function openImagePreview(canvas) {
             if (balloonIndex >= currentBalloonSizes.length) return 0;
             return currentBalloonSizes[balloonIndex++];
           };
+          const measureText = tokens.map(t => t.ch).join('');
           for (let i = 0; i < tokens.length; i++) {
             const token = tokens[i];
             const ch = token.ch;
@@ -3044,7 +3191,19 @@ function openImagePreview(canvas) {
 
           // 第一个元素标记为小节线
           elements[0].hasBar = true;
-          
+
+          if (recordMeasures && curCourse) {
+              if (!curCourse.measures) curCourse.measures = [];
+              curCourse.measures.push({
+                  text: measureText,                       // 使用前面定义的 measureText
+                  bpm: currentBpm || defaultBpm || 100,
+                  measure: currentMeasureStr || '4/4',    // 使用当前拍号字符串
+                  scroll: currentScrollMarker || 1,
+                  scrollMarker: currentScrollMarker || 1,
+                  gogo: gogoActive || false
+              });
+          }
+
           curCourse.rows.push({ elements, baseGap, branch: currentBranch , startScroll: startScrollValue});
         };
 
@@ -3094,9 +3253,11 @@ function openImagePreview(canvas) {
           if (dir.startsWith('#GOGOSTART')) gogoActive = true;
           else if (dir.startsWith('#GOGOEND')) gogoActive = false;
           if (dir.startsWith('#MEASURE')) {
-            const expr = dir.replace('#MEASURE', '').trim(),
-              parts = expr.split('/');
-            a = parts.length === 2 ? parseFloat(parts[0]) / parseFloat(parts[1]) : (parseFloat(expr) || 1);
+              const expr = dir.replace('#MEASURE', '').trim(),
+                  parts = expr.split('/');
+              a = parts.length === 2 ? parseFloat(parts[0]) / parseFloat(parts[1]) : (parseFloat(expr) || 1);
+              // 保存原始拍号字符串，例如 "4/4"、"3/4"
+              currentMeasureStr = parts.length === 2 ? `${parts[0]}/${parts[1]}` : (expr || '4/4');
           } else if (dir.startsWith('#SCROLL')) {
             const val = parseFloat(dir.replace('#SCROLL', '').trim());
             if (!isNaN(val)) {
@@ -3169,7 +3330,8 @@ function openImagePreview(canvas) {
                   style: 'Single',
                   chartRole: 'Single',
                   viewType: 'normal',
-                  rawLines: []   // ← 新增属性
+                  rawLines: [],   // ← 新增属性
+                  ...(recordMeasures ? { measures: [] } : {})
               };
               curCourse.rawLines.push(rawLine);  // 记录 COURSE 行本身
               firstCourseSeen = true;            // 标记已进入课程区域
@@ -3181,6 +3343,12 @@ function openImagePreview(canvas) {
               a = 1;
               buffer = [];
           } else if (line.startsWith('#START')) {
+            // 重置拍号 (MEASURE)
+            a = 1;
+            currentMeasureStr = '4/4';   // 添加这一行
+            // 重置 SCROLL
+            currentScroll = 1;
+            currentScrollMarker = 1;
             // 如果当前课程已有行，则结束旧课程，创建新课程对象
             if (curCourse && curCourse.rows.length) {
                 courses.push(curCourse);
@@ -3193,7 +3361,8 @@ function openImagePreview(canvas) {
                     style: 'Single',
                     chartRole: 'Single',
                     viewType: 'normal',
-                    rawLines: []
+                    rawLines: [],
+                    ...(recordMeasures ? { measures: [] } : {})
                 };
             }
 
@@ -3317,14 +3486,17 @@ function openImagePreview(canvas) {
           const p2 = group.find(v => v.chartRole === 'P2');
           if (p1 && p2) {
             result.push({
-              name: (single || p1).name,
-              title: (single || p1).title,
-              level: (single || p1).level,
-              viewType: 'double',
-              hasSingle: !!single,
-              singleRows: single ? single.rows : [],
-              p1Rows: p1.rows,
-              p2Rows: p2.rows
+                name: (single || p1).name,
+                title: (single || p1).title,
+                level: (single || p1).level,
+                viewType: 'double',
+                hasSingle: !!single,
+                singleRows: single ? single.rows : [],
+                p1Rows: p1.rows,
+                p2Rows: p2.rows,
+                singleMeasures: single ? (single.measures || []) : [],
+                p1Measures: p1.measures || [],
+                p2Measures: p2.measures || []
             });
           } else {
             result.push(...group);
@@ -3493,6 +3665,378 @@ function openImagePreview(canvas) {
         }
         buildCrossLayoutSliders(layouts);
         return { layouts, pattern };
+      }
+      function getSelectedMeasures() {
+          if (!exerciseState.selectedCourse) return [];
+          const course = exerciseState.selectedCourse;
+          if (course.viewType === 'double') {
+              return course.singleMeasures || course.p1Measures || [];
+          }
+          return course.measures || [];
+      }
+
+      function checkBranchSupport() {
+          const course = exerciseState.selectedCourse;
+          if (course && course.hasBranch) {
+              if (exerciseBranchWarning) exerciseBranchWarning.style.display = 'block';
+              // 不再禁用插入按钮
+          } else {
+              if (exerciseBranchWarning) exerciseBranchWarning.style.display = 'none';
+          }
+      }
+
+      function getMeasureDuration(bpm, measure) {
+          const [num, den] = String(measure).split('/').map(Number);
+          const numerator = num || 4;
+          const denominator = den || 4;
+          return (60 / bpm) * 4 * (numerator / denominator);
+      }
+
+      function getMeasureStartTime(measures, index, offsetSeconds) {
+          let time = 0;
+          if (offsetSeconds < 0) {
+              time = Math.abs(offsetSeconds);
+          }
+          for (let i = 0; i < index && i < measures.length; i++) {
+              time += getMeasureDuration(measures[i].bpm, measures[i].measure);
+          }
+          return time;
+      }
+
+      async function extractAudioSegment(audioFile, startTime, duration) {
+          const arrayBuffer = await audioFile.arrayBuffer();
+          const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+          const sampleRate = audioBuffer.sampleRate;
+          const startSample = Math.floor(startTime * sampleRate);
+          const lengthSamples = Math.floor(duration * sampleRate);
+          const segmentBuffer = audioContext.createBuffer(
+              audioBuffer.numberOfChannels,
+              lengthSamples,
+              sampleRate
+          );
+          for (let ch = 0; ch < audioBuffer.numberOfChannels; ch++) {
+              const channelData = audioBuffer.getChannelData(ch).slice(startSample, startSample + lengthSamples);
+              segmentBuffer.copyToChannel(channelData, ch);
+          }
+          return { audioBuffer: segmentBuffer, duration };
+      }
+
+      function createSilenceBuffer(duration, sampleRate, channels) {
+          const length = Math.floor(duration * sampleRate);
+          const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          const buffer = audioContext.createBuffer(channels, length, sampleRate);
+          return buffer;
+      }
+
+      function audioBufferToWav(audioBuffer) {
+          const numChannels = audioBuffer.numberOfChannels;
+          const sampleRate = audioBuffer.sampleRate;
+          const length = audioBuffer.length * numChannels * 2;
+          const buffer = new ArrayBuffer(44 + length);
+          const view = new DataView(buffer);
+          
+          // WAV header
+          function writeString(offset, string) {
+              for (let i = 0; i < string.length; i++) {
+                  view.setUint8(offset + i, string.charCodeAt(i));
+              }
+          }
+          
+          writeString(0, 'RIFF');
+          view.setUint32(4, 36 + length, true);
+          writeString(8, 'WAVE');
+          writeString(12, 'fmt ');
+          view.setUint32(16, 16, true);
+          view.setUint16(20, 1, true);
+          view.setUint16(22, numChannels, true);
+          view.setUint32(24, sampleRate, true);
+          view.setUint32(28, sampleRate * numChannels * 2, true);
+          view.setUint16(32, numChannels * 2, true);
+          view.setUint16(34, 16, true);
+          writeString(36, 'data');
+          view.setUint32(40, length, true);
+          
+          let offset = 44;
+          for (let i = 0; i < audioBuffer.length; i++) {
+              for (let ch = 0; ch < numChannels; ch++) {
+                  const sample = Math.max(-1, Math.min(1, audioBuffer.getChannelData(ch)[i]));
+                  view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+                  offset += 2;
+              }
+          }
+          
+          return new Blob([buffer], { type: 'audio/wav' });
+      }
+
+      function concatenateAudioBuffers(segments) {
+          if (!segments.length) return null;
+          const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          const sampleRate = segments[0].audioBuffer.sampleRate;
+          const channels = segments[0].audioBuffer.numberOfChannels;
+          const totalLength = segments.reduce((sum, seg) => sum + seg.audioBuffer.length, 0);
+          const result = audioContext.createBuffer(channels, totalLength, sampleRate);
+          let offset = 0;
+          for (const seg of segments) {
+              for (let ch = 0; ch < channels; ch++) {
+                  result.getChannelData(ch).set(seg.audioBuffer.getChannelData(ch), offset);
+              }
+              offset += seg.audioBuffer.length;
+          }
+          return result;
+      }
+
+      function updateExercisePreview() {
+          const measures = getSelectedMeasures();
+          const start = exerciseState.previewStartMeasure;
+          const count = exerciseState.previewCount;
+          exerciseStartMeasureLabel.textContent = start + 1;
+          if (!measures.length) return;
+          
+          const previewMeasures = measures.slice(start, start + count);
+          let previewTja = `TITLE:Preview\nBPM:${previewMeasures[0]?.bpm || 100}\nOFFSET:0\n\nCOURSE:Preview\nLEVEL:1\n\n#START\n`;
+
+          // 添加小节指令（仅当值变化时输出）
+          let lastBpm = null;
+          let lastScroll = null;
+          let lastMeasure = null;
+          for (const m of previewMeasures) {
+              if (m.bpm !== lastBpm) {
+                  previewTja += `#BPMCHANGE ${m.bpm}\n`;
+                  lastBpm = m.bpm;
+              }
+              if (m.scroll !== lastScroll) {
+                  previewTja += `#SCROLL ${m.scroll}\n`;
+                  lastScroll = m.scroll;
+              }
+              if (m.measure !== lastMeasure) {
+                  previewTja += `#MEASURE ${m.measure}\n`;
+                  lastMeasure = m.measure;
+              }
+              previewTja += m.text + ',\n';
+          }
+          previewTja += '#END\n';
+
+          const tempCourses = parseTJA(previewTja);
+          if (tempCourses.length > 0) {
+              const tempSelected = tempCourses[0];
+              // 不使用缓存，逐行计算布局
+              const tempLayouts = tempSelected.rows.map(r => {
+                  const result = mergeTJARows([r], 1);
+                  return result.layouts.length > 0 ? result.layouts[0] : null;
+              }).filter(l => l !== null);
+              renderExercisePreviewToContainer(exerciseSelectionPreview, tempLayouts);
+          }
+          updateExerciseFinalPreview();
+      }
+
+      function renderExercisePreviewToContainer(container, layouts) {
+          container.innerHTML = '';
+          if (!layouts.length) return;
+          const canvas = document.createElement('canvas');
+          const maxWidth = Math.max(...layouts.map(l => l.width));
+          const totalHeight = layouts.length * ROW_TOTAL_HEIGHT;
+          canvas.width = Math.ceil(maxWidth);
+          canvas.height = Math.ceil(totalHeight);
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#151515';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          let y = 0;
+          for (const layout of layouts) {
+              const tempCanvas = document.createElement('canvas');
+              drawLine(tempCanvas, layout, false, false, null, !showBars, showBalloonTail, showGogo, showTrack);
+              ctx.drawImage(tempCanvas, 0, y);
+              y += ROW_TOTAL_HEIGHT;
+          }
+          const scale = Math.min(1, (container.clientWidth - 20) / canvas.width);
+          canvas.style.width = canvas.width * scale + 'px';
+          canvas.style.height = canvas.height * scale + 'px';
+          container.appendChild(canvas);
+      }
+
+      function updateExerciseFinalPreview() {
+          const tjaText = buildExerciseTjaText();
+          renderTjaToContainer(tjaText, exerciseFinalPreview);
+      }
+      function renderTjaToContainer(tjaText, container) {
+          container.innerHTML = '';
+          const courses = parseTJA(tjaText);
+          if (!courses.length) return;
+
+          const course = courses[0]; // 取第一个课程
+          const hsScale = 1;         // 使用默认 HS
+          const doInvert = false, doSmall = false;
+          
+          // 获取所有行的布局（合并行模式）
+          const layouts = [];
+          const sections = splitBranchSections(course.rows);
+          let groupIndex = 0;
+          for (const section of sections) {
+              if (section.type === 'COMMON') {
+                  const merged = getMergedRowsCached(section.rows, hsScale, 'exercise_final_' + groupIndex);
+                  merged.layouts.forEach(l => {
+                      l.branchType = 'COMMON';
+                      l.groupIndex = groupIndex;
+                      layouts.push(l);
+                  });
+              } else {
+                  // 这里简单处理，只取达人分支（练习谱不应有分歧，所以不会进入此分支）
+                  const branches = splitBranchRows(section.rows);
+                  const branchRows = branches.M.length ? branches.M : (branches.E.length ? branches.E : branches.N);
+                  const merged = getMergedRowsCached(branchRows, hsScale, 'exercise_final_' + groupIndex);
+                  merged.layouts.forEach(l => {
+                      l.branchType = 'M';
+                      l.groupIndex = groupIndex;
+                      layouts.push(l);
+                  });
+              }
+              groupIndex++;
+          }
+
+          if (!layouts.length) return;
+
+          // 计算总宽度和总高度
+          const maxFirstX = Math.max(...layouts.map(l => l.firstNoteCanvasX));
+          const useGroupIndex = false; // 成品预览不需要额外分组间距
+          let totalY = 0;
+          const rowCanvases = layouts.map((l, i) => {
+              const c = document.createElement('canvas');
+              drawLine(c, l, doInvert, doSmall, null, !showBars, showBalloonTail, showGogo, showTrack);
+              return { canvas: c, firstX: l.firstNoteCanvasX };
+          });
+          const maxWidth = Math.max(...rowCanvases.map((r, i) => (maxFirstX - r.firstX) + r.canvas.width));
+          const totalHeight = layouts.length * (ROW_TOTAL_HEIGHT + EXTRA_GAP_SAME_BRANCH); // 每个布局之间留间距
+
+          const finalCanvas = document.createElement('canvas');
+          finalCanvas.width = Math.ceil(maxWidth);
+          finalCanvas.height = Math.ceil(totalHeight);
+          const ctx = finalCanvas.getContext('2d');
+
+          if (!transparentBgActive) {
+              ctx.fillStyle = '#151515';
+              ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+          }
+
+          let y = 0;
+          for (let i = 0; i < rowCanvases.length; i++) {
+              ctx.drawImage(rowCanvases[i].canvas, maxFirstX - rowCanvases[i].firstX, y);
+              y += ROW_TOTAL_HEIGHT + EXTRA_GAP_SAME_BRANCH;
+          }
+
+          // 调整显示大小
+          const scale = Math.min(1, (container.clientWidth - 20) / finalCanvas.width);
+          finalCanvas.style.width = finalCanvas.width * scale + 'px';
+          finalCanvas.style.height = finalCanvas.height * scale + 'px';
+          finalCanvas.style.maxWidth = '100%';
+          finalCanvas.style.cursor = 'pointer';
+          finalCanvas.addEventListener('click', () => openImagePreview(finalCanvas));
+          container.appendChild(finalCanvas);
+      }
+      async function insertExerciseMeasures() {
+          const measures = getSelectedMeasures();
+          const start = exerciseState.previewStartMeasure;
+          const count = exerciseState.previewCount;
+          const selectedMeasures = measures.slice(start, start + count);
+          if (!selectedMeasures.length) return;
+
+          const offsetMatch = exerciseState.sourceTja.match(/OFFSET:\s*(-?[\d.]+)/);
+          const offsetSeconds = offsetMatch ? parseFloat(offsetMatch[1]) : 0;
+          exerciseState.offset = offsetSeconds;
+
+          for (let i = 0; i < selectedMeasures.length; i++) {
+              const m = selectedMeasures[i];
+              // 保存小节信息
+              exerciseState.insertedMeasures.push({
+                  bpm: m.bpm,
+                  scroll: m.scroll,
+                  measure: m.measure || '4/4',   // 改为 measure
+                  text: m.text,
+              });
+
+              // 提取音频片段
+              const absoluteStart = getMeasureStartTime(measures, start + i, offsetSeconds);
+              const duration = getMeasureDuration(m.bpm, m.measure);
+              if (exerciseState.sourceAudio) {
+                  const segment = await extractAudioSegment(exerciseState.sourceAudio, absoluteStart, duration);
+                  exerciseState.exerciseAudioChunks.push(segment);
+              }
+          }
+
+          updateExerciseFinalPreview();
+      }
+
+      function deleteLastExerciseMeasure() {
+          if (exerciseState.insertedMeasures.length === 0) return;
+          exerciseState.insertedMeasures.pop();
+          exerciseState.exerciseAudioChunks.pop();
+          updateExerciseFinalPreview();
+      }
+
+      function exportExercise() {
+          const title = exerciseTitle.value || 'Exercise';
+          const tjaText = buildExerciseTjaText();   // 获取完整 TJA 文本
+
+          // 下载 TJA
+          const tjaBlob = new Blob([tjaText], { type: 'text/plain;charset=utf-8' });
+          const tjaUrl = URL.createObjectURL(tjaBlob);
+          const tjaA = document.createElement('a');
+          tjaA.href = tjaUrl;
+          tjaA.download = title + '.tja';
+          tjaA.click();
+          URL.revokeObjectURL(tjaUrl);
+
+          // 音频导出逻辑（保持不变）
+          if (exerciseState.exerciseAudioChunks.length) {
+              let combinedBuffer = concatenateAudioBuffers(exerciseState.exerciseAudioChunks);
+              if (combinedBuffer && exerciseState.offset > 0) {
+                  const silence = createSilenceBuffer(exerciseState.offset, combinedBuffer.sampleRate, combinedBuffer.numberOfChannels);
+                  const finalBuffer = concatenateAudioBuffers([
+                      { audioBuffer: silence, duration: exerciseState.offset },
+                      ...exerciseState.exerciseAudioChunks
+                  ]);
+                  if (finalBuffer) combinedBuffer = finalBuffer;
+              }
+              if (combinedBuffer) {
+                  const wavBlob = audioBufferToWav(combinedBuffer);
+                  const wavUrl = URL.createObjectURL(wavBlob);
+                  const wavA = document.createElement('a');
+                  wavA.href = wavUrl;
+                  wavA.download = title + '.wav';
+                  wavA.click();
+                  URL.revokeObjectURL(wavUrl);
+              }
+          }
+      }
+      
+      function buildExerciseTjaText() {
+          const title = exerciseTitle.value || 'Exercise';
+          let tja = `TITLE:${title}\nSUBTITLE:--\nBPM:100\nWAVE:${title}.wav\nOFFSET:0\n\nCOURSE:Oni\nLEVEL:10\n\n#START\n`;
+
+          if (exerciseState.insertedMeasures.length === 0) {
+              tja += '0,\n';
+          } else {
+              let lastBpm = null;
+              let lastScroll = null;
+              let lastMeasure = null;
+
+              for (const measure of exerciseState.insertedMeasures) {
+                  if (measure.bpm !== lastBpm) {
+                      tja += `#BPMCHANGE ${measure.bpm}\n`;
+                      lastBpm = measure.bpm;
+                  }
+                  if (measure.scroll !== lastScroll) {
+                      tja += `#SCROLL ${measure.scroll}\n`;
+                      lastScroll = measure.scroll;
+                  }
+                  if (measure.measure !== lastMeasure) {
+                      tja += `#MEASURE ${measure.measure}\n`;
+                      lastMeasure = measure.measure;
+                  }
+                  tja += measure.text + ',\n';
+              }
+          }
+          tja += '#END\n';
+          return tja;
       }
 
       function buildLayoutFromGroup(group) {
@@ -5540,6 +6084,127 @@ function openImagePreview(canvas) {
       btnExportChipEffect.addEventListener('click', () => {
           exportChipEffect();
       });
+      // 侧边栏按钮：进入练习谱生成页面
+      btnExercise.addEventListener('click', () => {
+          sidebar.classList.remove('open');
+          taikoPage.style.display = 'none';
+          nameplatePage.style.display = 'none';
+          noteSkinPage.style.display = 'none';
+          exercisePage.style.display = '';
+      });
+
+      // 上传 TJA 文件
+      exerciseTjaFile.addEventListener('change', async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          const text = await file.text();
+          exerciseState.sourceTja = text;
+          // 使用 recordMeasures = true 解析
+          exerciseState.parsedCourses = parseTJA(text, { recordMeasures: true });
+          
+          // 填充 COURSE 下拉框
+          exerciseCourseSelect.innerHTML = '';
+          exerciseState.parsedCourses.forEach((c, idx) => {
+              const opt = document.createElement('option');
+              opt.value = idx;
+              opt.textContent = c.name + (c.level ? ' ' + c.level : '');
+              exerciseCourseSelect.appendChild(opt);
+          });
+          
+          if (exerciseState.parsedCourses.length > 0) {
+              exerciseState.selectedCourse = exerciseState.parsedCourses[0];
+              exerciseState.previewStartMeasure = 0;
+              checkBranchSupport();
+              updateExercisePreview();
+          }
+      });
+
+      // 上传音频文件
+      exerciseAudioFile.addEventListener('change', (e) => {
+          exerciseState.sourceAudio = e.target.files[0];
+      });
+
+      // 切换 COURSE
+      exerciseCourseSelect.addEventListener('change', () => {
+          const idx = parseInt(exerciseCourseSelect.value);
+          exerciseState.selectedCourse = exerciseState.parsedCourses[idx];
+          exerciseState.previewStartMeasure = 0;
+          checkBranchSupport();
+          updateExercisePreview();
+      });
+
+      // 预览小节数变化
+      exercisePreviewCount.addEventListener('change', () => {
+          exerciseState.previewCount = parseInt(exercisePreviewCount.value) || 1;
+          updateExercisePreview();
+      });
+
+      // 前移
+      btnExercisePrevMeasure.addEventListener('click', () => {
+          if (exerciseState.previewStartMeasure > 0) {
+              exerciseState.previewStartMeasure--;
+              updateExercisePreview();
+          }
+      });
+
+      // 后移
+      btnExerciseNextMeasure.addEventListener('click', () => {
+          const measures = getSelectedMeasures();
+          if (exerciseState.previewStartMeasure + exerciseState.previewCount < measures.length) {
+              exerciseState.previewStartMeasure++;
+              updateExercisePreview();
+          }
+      });
+
+      // 左移4小节
+      btnExercisePrevMeasure4.addEventListener('click', () => {
+          const step = 4;
+          if (exerciseState.previewStartMeasure >= step) {
+              exerciseState.previewStartMeasure -= step;
+          } else {
+              exerciseState.previewStartMeasure = 0;
+          }
+          updateExercisePreview();
+      });
+
+      // 右移4小节
+      btnExerciseNextMeasure4.addEventListener('click', () => {
+          const step = 4;
+          const measures = getSelectedMeasures();
+          const maxStart = Math.max(0, measures.length - exerciseState.previewCount);
+          if (exerciseState.previewStartMeasure + step <= maxStart) {
+              exerciseState.previewStartMeasure += step;
+          } else {
+              exerciseState.previewStartMeasure = maxStart;
+          }
+          updateExercisePreview();
+      });
+      // 插入
+      btnExerciseInsert.addEventListener('click', async () => {
+          if (!exerciseState.selectedCourse || !exerciseState.sourceAudio) {
+              alert('请先上传TJA和音频文件');
+              return;
+          }
+          if (exerciseState.selectedCourse.hasBranch) {
+              console.warn('分歧谱面将被忽略分歧，仅使用默认分支');
+          }
+          await insertExerciseMeasures();
+      });
+
+      // 删除最后一小节
+      btnExerciseDeleteLast.addEventListener('click', () => {
+          deleteLastExerciseMeasure();
+      });
+
+      // 导出
+      btnExerciseExport.addEventListener('click', () => {
+          exportExercise();
+      });
+
+      // 标题变化影响最终预览
+      exerciseTitle.addEventListener('input', () => {
+          updateExerciseFinalPreview();
+      });
       // 页面切换
       sidebarBtns.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -5550,10 +6215,12 @@ function openImagePreview(canvas) {
             taikoPage.style.display = '';
             nameplatePage.style.display = 'none';
             noteSkinPage.style.display = 'none';
+            exercisePage.style.display = 'none'; 
           } else if (page === 'nameplate') {
             taikoPage.style.display = 'none';
             nameplatePage.style.display = '';
             noteSkinPage.style.display = 'none';
+            exercisePage.style.display = 'none';
             // 等待图片加载完成后绘制
             if (nameplateImages.bars.length === 12 && 
                 nameplateLoaded.shadow && 
