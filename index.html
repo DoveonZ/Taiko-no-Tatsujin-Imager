@@ -3194,13 +3194,29 @@ function openImagePreview(canvas) {
 
           if (recordMeasures && curCourse) {
               if (!curCourse.measures) curCourse.measures = [];
+
+              // 计算小节总时长（秒），考虑小节内 BPM / 拍号变化
+              let totalDuration = 0;
+              const n = tokens.length;
+              for (let i = 0; i < n; i++) {
+                  const token = tokens[i];
+                  const bpm = token.bpm || defaultBpm || 100;
+                  const measureStr = token.measure || currentMeasureStr || '4/4';
+                  const [num, den] = measureStr.split('/').map(Number);
+                  const numerator = num || 4;
+                  const denominator = den || 4;
+                  // 每个音符占 1/n 小节，一小节时长 = (60 / bpm) * 4 * (num/den)
+                  totalDuration += (60 / bpm) * 4 * (numerator / denominator) / n;
+              }
+
               curCourse.measures.push({
-                  text: measureText,                       // 使用前面定义的 measureText
+                  text: measureText,
                   bpm: currentBpm || defaultBpm || 100,
-                  measure: currentMeasureStr || '4/4',    // 使用当前拍号字符串
+                  measure: currentMeasureStr || '4/4',
                   scroll: currentScrollMarker || 1,
                   scrollMarker: currentScrollMarker || 1,
-                  gogo: gogoActive || false
+                  gogo: gogoActive || false,
+                  duration: totalDuration   // 新增：该小节的实际时长
               });
           }
 
@@ -3442,13 +3458,14 @@ function openImagePreview(canvas) {
                   continue;
                 }
                 if (!/\s/.test(ch)) {
-                  buffer.push({
-                    ch,
-                    scrollFactor: currentScroll,
-                    gogo: gogoActive,
-                    scrollMarker: currentScrollMarker,
-                    bpm: currentBpm
-                  });
+                    buffer.push({
+                        ch,
+                        scrollFactor: currentScroll,
+                        gogo: gogoActive,
+                        scrollMarker: currentScrollMarker,
+                        bpm: currentBpm,
+                        measure: currentMeasureStr   // 新增：记录当前拍号字符串
+                    });
                 }
                 idx++;
               }
@@ -3685,7 +3702,14 @@ function openImagePreview(canvas) {
           }
       }
 
-      function getMeasureDuration(bpm, measure) {
+      function getMeasureDuration(measureOrBpm, maybeMeasure) {
+          // 如果传入的是小节对象，且包含 duration，直接返回
+          if (typeof measureOrBpm === 'object' && measureOrBpm.duration !== undefined) {
+              return measureOrBpm.duration;
+          }
+          // 否则使用旧公式（bpm + measure 字符串）
+          const bpm = measureOrBpm;
+          const measure = maybeMeasure;
           const [num, den] = String(measure).split('/').map(Number);
           const numerator = num || 4;
           const denominator = den || 4;
@@ -3698,7 +3722,7 @@ function openImagePreview(canvas) {
               time = Math.abs(offsetSeconds);
           }
           for (let i = 0; i < index && i < measures.length; i++) {
-              time += getMeasureDuration(measures[i].bpm, measures[i].measure);
+              time += getMeasureDuration(measures[i]);  // 直接传入小节对象
           }
           return time;
       }
@@ -3955,7 +3979,7 @@ function openImagePreview(canvas) {
 
               // 提取音频片段
               const absoluteStart = getMeasureStartTime(measures, start + i, offsetSeconds);
-              const duration = getMeasureDuration(m.bpm, m.measure);
+              const duration = getMeasureDuration(m);  // 传入小节对象，使用其 duration
               if (exerciseState.sourceAudio) {
                   const segment = await extractAudioSegment(exerciseState.sourceAudio, absoluteStart, duration);
                   exerciseState.exerciseAudioChunks.push(segment);
@@ -3977,7 +4001,8 @@ function openImagePreview(canvas) {
           const tjaText = buildExerciseTjaText();   // 获取完整 TJA 文本
 
           // 下载 TJA
-          const tjaBlob = new Blob([tjaText], { type: 'text/plain;charset=utf-8' });
+          const BOM = '\uFEFF';
+          const tjaBlob = new Blob([BOM + tjaText], { type: 'text/plain;charset=utf-8' });
           const tjaUrl = URL.createObjectURL(tjaBlob);
           const tjaA = document.createElement('a');
           tjaA.href = tjaUrl;
@@ -5642,7 +5667,8 @@ function openImagePreview(canvas) {
           const filename = safeTitle + '.tja';
 
           // 创建 Blob 并触发下载
-          const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+          const BOM = '\uFEFF';
+          const blob = new Blob([BOM + text], { type: 'text/plain;charset=utf-8' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
